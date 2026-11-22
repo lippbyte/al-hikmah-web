@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Primary Colors (Emerald) */
+  --color-primary: #059669;
+  --color-primary-hover: #047857;
+  --color-primary-surface: #ECFDF5;
+
+  /* Accent Colors (Gold) */
+  --color-accent: #D97706;
+  --color-accent-surface: #FEF3C7;
+
+  /* Neutral Colors (High-Contrast Light Hierarchy) */
+  --color-bg-base: #F1F5F9;       /* Kanvas utama (abu-abu lembut agar tidak datar) */
+  --color-bg-surface: #FFFFFF;    /* Sidebar, card, kotak input (putih bersih, menonjol) */
+  --color-bg-elevated: #E2E8F0;   /* Hover state, tab aktif, atau elemen sekunder */
+  --color-border: #CBD5E1;        /* Garis batas yang tegas dan jelas */
+  --color-text-muted: #475569;    /* Teks sekunder / deskripsi */
+  --color-text-main: #090D16;     /* Teks utama (sangat pekat agar kontras maksimal) */
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+/* Hide scrollbars while maintaining scroll functionality */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
