@@ -1,404 +1,639 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
-import {
-  LuCalendarDays,
-  LuArrowUpRight,
-  LuSparkles,
-  LuMoon,
-  LuClock,
-  LuStar,
-  LuHeart,
-  LuSmartphone,
-  LuCheck,
-  LuHouse,
-  LuMessageSquare,
-  LuUser,
-  LuSunset,
-  LuBot,
-  LuBookOpen,
-  LuCircleHelp,
-} from "react-icons/lu";
 import AppLayout from "../components/AppLayout";
-
-const INITIAL_ACTIVITIES = [
-  {
-    id: "shaum",
-    title: "Shaum",
-    subtitle: "Puasa hari ini",
-    icon: LuMoon,
-    completed: true,
-  },
-  {
-    id: "sholat",
-    title: "Sholat wajib",
-    subtitle: "3/5 waktu",
-    icon: LuClock,
-    completed: true,
-  },
-  {
-    id: "tarawih",
-    title: "Tarawih",
-    subtitle: "Sholat malam",
-    icon: LuStar,
-    completed: false,
-  },
-  {
-    id: "infaq",
-    title: "Infaq",
-    subtitle: "Sedekah harian",
-    icon: LuHeart,
-    completed: true,
-  },
-  {
-    id: "ceramah",
-    title: "Ceramah",
-    subtitle: "Kultum / kajian",
-    icon: LuSmartphone,
-    completed: false,
-  },
-];
-
-const PRAYER_SCHEDULE = [
-  { name: "Imsak", time: "04:32" },
-  { name: "Subuh", time: "04:42" },
-  { name: "Dzuhur", time: "12:05" },
-  { name: "Ashar", time: "15:15" },
-  { name: "Maghrib", time: "18:12", isNext: true, label: "Buka Puasa" },
-  { name: "Isya", time: "19:22" },
-];
+import ProgressRing from "../components/ProgressRing";
+import BottomSheet from "../components/BottomSheet";
+import NotificationBell from "../components/NotificationBell";
+import {
+  ShaumForm,
+  SholatWajibForm,
+  SholatSunnahForm,
+  TadarusForm,
+  InfaqForm,
+  CeramahForm,
+} from "../components/ActivityForms";
+import { useAuth } from "../../context/authStore";
+import { useAppData } from "../../context/appDataStore";
+import { useToast } from "../../context/toastStore";
+import {
+  DEFAULT_PRAYER_SCHEDULE,
+  fetchPrayerSchedule,
+  getNextPrayerCountdown,
+} from "../../services/prayerScheduleService";
+import { getSurahByNumber } from "../../services/quranService";
+import { listItem, tapScale } from "../../lib/motion";
+import logoAlHikmah from "../images/logo-al-hikmah.png";
+import {
+  IconArrowUpRight,
+  IconSparkleFill,
+  IconMoonStars,
+  IconClock,
+  IconStar,
+  IconCharity,
+  IconLecture,
+  IconQuran,
+  IconCheckBold,
+  IconCircle,
+  IconMinus,
+  IconPrayerTime,
+  IconChat,
+  IconBookOpenText,
+  IconQuestion,
+  IconChevronRight,
+} from "../../lib/icons";
 
 export default function Home() {
   const navigate = useNavigate();
-  const [activities, setActivities] = useState(INITIAL_ACTIVITIES);
+  const { currentUser } = useAuth();
+  const { dailyLog, updateDailyLogSection } = useAppData();
+  const { showToast } = useToast();
 
-  // Calculate dynamic progress
-  const completedCount = activities.filter((a) => a.completed).length;
-  const totalCount = activities.length;
+  // Prayer Schedule + Live Countdown
+  const [prayerState, setPrayerState] = useState({
+    schedule: DEFAULT_PRAYER_SCHEDULE,
+    source: "Jadwal contoh · siap dihubungkan ke API",
+    city: "Kota Contoh (WIB)",
+  });
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    let active = true;
+    fetchPrayerSchedule().then((data) => {
+      if (active) setPrayerState(data);
+    });
+    const interval = setInterval(() => setNow(new Date()), 30000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const countdown = getNextPrayerCountdown(prayerState.schedule, now);
+
+  // Popup state for Bento Grid cards
+  const [activeModal, setActiveModal] = useState(null);
+  const [draftShaum, setDraftShaum] = useState(dailyLog.shaum);
+  const [draftPrayers, setDraftPrayers] = useState(dailyLog.sholatWajib);
+  const [draftSunnah, setDraftSunnah] = useState(dailyLog.sholatSunnah);
+  const [draftTadarus, setDraftTadarus] = useState(dailyLog.tadarus);
+  const [draftInfaq, setDraftInfaq] = useState(dailyLog.infaq);
+  const [draftCeramah, setDraftCeramah] = useState(dailyLog.ceramah);
+
+  const openActivityModal = (activityId) => {
+    setDraftShaum(dailyLog.shaum);
+    setDraftPrayers(dailyLog.sholatWajib);
+    setDraftSunnah(dailyLog.sholatSunnah);
+    setDraftTadarus(dailyLog.tadarus);
+    setDraftInfaq(dailyLog.infaq);
+    setDraftCeramah(dailyLog.ceramah);
+    setActiveModal(activityId);
+  };
+
+  const handleSaveModal = () => {
+    if (activeModal === "shaum") {
+      updateDailyLogSection({ shaum: draftShaum }, "Shaum");
+      showToast("Catatan Shaum diperbarui.");
+    } else if (activeModal === "sholat") {
+      updateDailyLogSection(
+        { sholatWajib: draftPrayers, sholatSunnah: draftSunnah },
+        "Sholat Wajib & Sunnah"
+      );
+      showToast("Catatan Sholat diperbarui.");
+    } else if (activeModal === "sunnah") {
+      updateDailyLogSection({ sholatSunnah: draftSunnah }, "Sholat Sunnah");
+      showToast("Catatan Sholat Sunnah diperbarui.");
+    } else if (activeModal === "tadarus") {
+      const s = getSurahByNumber(draftTadarus.surahNumber);
+      updateDailyLogSection(
+        { tadarus: draftTadarus },
+        "Tadarus Qur'an",
+        `Rafi Pratama (Demo) mencatat Tadarus QS. ${s.name} ayat ${draftTadarus.ayatStart}–${draftTadarus.ayatEnd}.`
+      );
+      showToast("Catatan Tadarus Qur'an diperbarui.");
+    } else if (activeModal === "infaq") {
+      updateDailyLogSection({ infaq: draftInfaq }, "Infaq");
+      showToast("Keterangan Infaq disimpan.");
+    } else if (activeModal === "ceramah") {
+      updateDailyLogSection({ ceramah: draftCeramah }, "Ceramah / Kultum");
+      showToast("Catatan Ceramah disimpan.");
+    }
+    setActiveModal(null);
+  };
+
+  // Compute progress across 6 daily bento activities
+  const prayersList = Object.values(dailyLog.sholatWajib || {});
+  const prayersDone = prayersList.filter((p) => p.status === "sudah").length;
+  const sunnahCount = Object.values(dailyLog.sholatSunnah || {}).filter(
+    Boolean
+  ).length;
+  const tadarusSurah = getSurahByNumber(dailyLog.tadarus?.surahNumber || 2);
+  const tadarusFilled = Boolean(
+    dailyLog.tadarus?.surahNumber && dailyLog.tadarus?.ayatEnd
+  );
+  const infaqFilled = Boolean(dailyLog.infaq?.keterangan?.trim());
+  const ceramahFilled = Boolean(dailyLog.ceramah?.judul?.trim());
+  const shaumDone = dailyLog.shaum === "berpuasa";
+  const shaumHalangan = dailyLog.shaum === "berhalangan";
+
+  const bentoActivities = [
+    {
+      id: "shaum",
+      title: "Shaum",
+      subtitle:
+        dailyLog.shaum === "berpuasa"
+          ? "Berpuasa hari ini"
+          : dailyLog.shaum === "berhalangan"
+          ? "Berhalangan"
+          : "Tidak berpuasa",
+      icon: IconMoonStars,
+      status: shaumDone ? "sudah" : shaumHalangan ? "berhalangan" : "belum",
+      spanClass: "col-span-2 md:col-span-3",
+      featured: true,
+    },
+    {
+      id: "sholat",
+      title: "Sholat Wajib",
+      subtitle: `${prayersDone}/5 waktu · Waktu & Jamaah`,
+      icon: IconClock,
+      status: prayersDone > 0 ? "sudah" : "belum",
+      spanClass: "col-span-2 md:col-span-3",
+      featured: true,
+    },
+    {
+      id: "tadarus",
+      title: "Tadarus Qur'an",
+      subtitle: tadarusFilled
+        ? `QS. ${tadarusSurah.name} · Ayat ${dailyLog.tadarus.ayatStart}–${dailyLog.tadarus.ayatEnd}`
+        : "Pilih juz, surah & ayat",
+      icon: IconQuran,
+      status: tadarusFilled ? "sudah" : "belum",
+      spanClass: "col-span-2 md:col-span-3",
+    },
+    {
+      id: "sunnah",
+      title: "Sholat Sunnah",
+      subtitle:
+        sunnahCount > 0
+          ? `${sunnahCount} sunnah tercatat (Tarawih/Dhuha/Rawatib)`
+          : "Tarawih, Dhuha, Qobla & Ba'da",
+      icon: IconStar,
+      status: sunnahCount > 0 ? "sudah" : "belum",
+      spanClass: "col-span-1 md:col-span-3",
+    },
+    {
+      id: "infaq",
+      title: "Infaq",
+      subtitle: infaqFilled
+        ? dailyLog.infaq.keterangan
+        : "Tulis keterangan berinfaq atau tidak",
+      icon: IconCharity,
+      status: infaqFilled ? "info" : "belum",
+      hideStatusPill: true,
+      spanClass: "col-span-1 md:col-span-3",
+    },
+    {
+      id: "ceramah",
+      title: "Ceramah / Kultum",
+      subtitle: ceramahFilled
+        ? `${dailyLog.ceramah.judul}`
+        : "Judul, penceramah & ringkasan jujur",
+      icon: IconLecture,
+      status: ceramahFilled ? "sudah" : "belum",
+      spanClass: "col-span-2 md:col-span-3",
+    },
+  ];
+
+  const completedCount = [
+    shaumDone || shaumHalangan,
+    prayersDone > 0,
+    sunnahCount > 0,
+    tadarusFilled,
+    infaqFilled,
+    ceramahFilled,
+  ].filter(Boolean).length;
+
+  const totalCount = bentoActivities.length;
   const statusLabel =
     completedCount === totalCount
-      ? "Selesai"
+      ? "Lengkap"
       : completedCount === 0
       ? "Belum dimulai"
       : "Sebagian";
 
-  const toggleActivity = (id) => {
-    setActivities((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, completed: !item.completed } : item
-      )
-    );
+  const displayName =
+    currentUser?.role === "siswa" ? currentUser.firstName : "Rafi";
+
+  const modalTitleMap = {
+    shaum: "Catat Shaum Hari Ini",
+    sholat: "Catat Sholat Wajib & Sunnah",
+    sunnah: "Catat Sholat Sunnah",
+    tadarus: "Catat Tadarus Qur'an",
+    infaq: "Keterangan Infaq",
+    ceramah: "Catat Ceramah / Kultum",
   };
 
   return (
     <AppLayout>
-      {/* ===================== MAIN CONTENT AREA ===================== */}
-      <main className="w-full max-w-md md:max-w-3xl lg:max-w-6xl xl:max-w-7xl mx-auto flex-1 flex flex-col px-4 md:px-6 lg:px-8 pt-6 pb-28 lg:pb-12 gap-6">
-        
-        {/* ===================== TOP PAGE HEADER ===================== */}
-        <header className="flex items-center justify-between select-none">
-          <div>
-            <p className="text-xs md:text-sm text-text-muted font-normal">
-              Assalamu'alaikum, Rakan
-            </p>
-            <h1 className="text-2xl md:text-3xl font-bold text-text-main mt-0.5">
-              Hari Ini
-            </h1>
+      <main className="w-full max-w-[1100px] mx-auto flex-1 flex flex-col px-4 md:px-6 lg:px-8 pt-6 pb-28 lg:pb-12 gap-5 md:gap-6">
+        {/* Compact Header with Mobile Brand Logo & Notification Bell */}
+        <header className="flex items-center justify-between gap-3 select-none">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="lg:hidden w-11 h-11 rounded-2xl bg-bg-surface border border-border overflow-hidden flex items-center justify-center shrink-0 shadow-[var(--shadow-card)]">
+              <img
+                src={logoAlHikmah}
+                alt="Logo Al Hikmah"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs md:text-sm text-text-muted font-medium truncate">
+                Assalamu&apos;alaikum, {displayName}
+              </p>
+              <h1 className="font-display text-2xl md:text-3xl font-bold text-text-main tracking-tight mt-0.5">
+                Hari Ini
+              </h1>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="hidden sm:inline-flex text-xs font-medium text-text-muted bg-bg-elevated px-3 py-1.5 rounded-full">
+              16 Ramadan 1448 H
+            </span>
+            <NotificationBell targetRole="siswa" />
           </div>
         </header>
 
-        {/* ===================== RESPONSIVE GRID ===================== */}
-        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
-          {/* ================= LEFT / PRIMARY COLUMN ================= */}
+        {/* Responsive Grid */}
+        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
+          {/* Primary Column */}
           <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-5">
-            {/* Banner / Hero Card (Catatan hari ini) */}
-            <motion.section
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="w-full bg-primary rounded-3xl p-5 md:p-6 lg:p-7 text-white shadow-md flex flex-col justify-between gap-4 relative overflow-hidden"
+            {/* Hero Marun Card */}
+            <section
+              aria-label="Ringkasan catatan hari ini"
+              className="w-full bg-primary-600 rounded-[1.75rem] p-5 md:p-7 text-on-primary shadow-[var(--shadow-elevated)] flex flex-col gap-5 relative overflow-hidden"
             >
-              <div className="flex items-center justify-between z-10">
-                <div className="flex items-center gap-2">
-                  <span className="bg-white text-primary text-xs font-semibold px-2.5 py-1 rounded-md shadow-2xs">
-                    {statusLabel}
-                  </span>
-                  <span className="bg-black/15 backdrop-blur-xs text-white text-xs font-medium px-2.5 py-1 rounded-md">
-                    {completedCount} dari {totalCount} selesai
-                  </span>
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-2.5 min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 bg-on-primary/15 text-on-primary text-xs font-semibold px-3 py-1 rounded-full">
+                      {statusLabel}
+                    </span>
+                    <span className="text-xs text-on-primary/80 font-medium">
+                      {completedCount} dari {totalCount} tercatat
+                    </span>
+                  </div>
+
+                  <div>
+                    <h2 className="font-display text-2xl md:text-[1.75rem] font-bold leading-tight">
+                      Catatan hari ini
+                    </h2>
+                    <p className="text-xs md:text-sm text-on-primary/85 mt-1">
+                      Selasa, 24 Feb 2027 · 16 Ramadan 1448 H
+                    </p>
+                  </div>
                 </div>
 
-                <motion.button
-                  whileHover={{ scale: 1.08 }}
-                  whileTap={{ scale: 0.92 }}
-                  type="button"
-                  onClick={() => navigate("/catatan")}
-                  className="w-8 h-8 rounded-lg bg-white text-primary flex items-center justify-center shadow-xs cursor-pointer"
-                  aria-label="Lihat catatan"
-                >
-                  <LuArrowUpRight className="text-base font-bold" />
-                </motion.button>
+                <ProgressRing
+                  value={completedCount}
+                  total={totalCount}
+                  size={92}
+                  strokeWidth={8}
+                  variant="hero"
+                  label={`Progres catatan hari ini: ${completedCount} dari ${totalCount}`}
+                />
               </div>
 
-              <div className="z-10 mt-1">
-                <h2 className="text-xl md:text-2xl font-bold">
-                  Catatan hari ini
-                </h2>
-                <p className="text-xs md:text-sm text-white/85 font-normal mt-0.5">
-                  Selasa, 24 Feb · 17 Ramadan 1448 H
-                </p>
-              </div>
-
-              {/* Segmented Progress Bar */}
-              <div className="flex items-center gap-1.5 z-10 my-1">
-                {Array.from({ length: totalCount }).map((_, idx) => (
-                  <div
-                    key={idx}
-                    className={`h-2 rounded-md flex-1 transition-all duration-300 ${
-                      idx < completedCount ? "bg-white" : "bg-white/25"
-                    }`}
-                  />
-                ))}
-              </div>
-
-              {/* Action button */}
               <motion.button
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
+                whileTap={tapScale}
                 type="button"
                 onClick={() => navigate("/catatan")}
-                className="w-full py-3.5 rounded-xl bg-white text-primary font-semibold text-sm hover:bg-slate-50 transition-colors shadow-xs cursor-pointer z-10"
+                className="w-full min-h-12 px-6 rounded-full bg-bg-surface text-primary-700 hover:bg-bg-base font-semibold text-sm md:text-base transition-colors shadow-[var(--shadow-card)] cursor-pointer flex items-center justify-center gap-2"
               >
-                Lanjutkan
+                <span>Buka Formulir Lengkap</span>
+                <IconArrowUpRight className="text-lg" aria-hidden="true" />
               </motion.button>
-            </motion.section>
+            </section>
 
-            {/* Special Activity / Highlight Card (Nuzulul Qur'an) - HIGH CONTRAST */}
-            <motion.section
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, delay: 0.05 }}
+            {/* Special Activity Highlight Card */}
+            <motion.button
+              whileTap={tapScale}
+              type="button"
               onClick={() => navigate("/kegiatan-khusus/nuzulul-quran")}
-              className="w-full bg-accent-surface border border-accent/30 rounded-2xl p-4 flex items-center justify-between shadow-xs hover:border-accent/50 transition-colors cursor-pointer"
+              className="w-full text-left bg-accent-50 border border-accent-200 hover:border-accent-300 rounded-2xl p-4 md:p-5 flex items-center justify-between gap-3 shadow-[var(--shadow-card)] transition-colors cursor-pointer min-h-[76px]"
             >
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-accent text-white flex items-center justify-center text-xl shrink-0 shadow-xs">
-                  <LuSparkles />
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-11 h-11 rounded-2xl bg-accent-500 text-on-primary flex items-center justify-center text-xl shrink-0">
+                  <IconSparkleFill aria-hidden="true" />
                 </div>
 
-                <div>
-                  <h3 className="text-sm md:text-base font-bold text-[#451A03] leading-snug">
-                    Kegiatan khusus · Nuzulul Qur'an (17 Ramadan)
+                <div className="min-w-0">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-accent-600 block">
+                    Kegiatan Khusus · 17 Ramadan
+                  </span>
+                  <h3 className="font-display text-base md:text-lg font-bold text-accent-800 leading-snug">
+                    Nuzulul Qur&apos;an
                   </h3>
-                  <p className="text-xs md:text-sm text-[#78350F] font-medium mt-0.5">
-                    Panduan amaliyah malam ke-17
+                  <p className="text-xs md:text-sm text-accent-700 mt-0.5 truncate">
+                    Panduan tadarus &amp; kajian malam ke-17
                   </p>
                 </div>
               </div>
 
-              <div className="w-8 h-8 rounded-lg bg-white/90 text-[#451A03] flex items-center justify-center text-sm shrink-0 ml-2 shadow-2xs">
-                <LuArrowUpRight className="font-bold" />
-              </div>
-            </motion.section>
+              <span className="w-10 h-10 rounded-full bg-bg-surface border border-accent-200 text-accent-700 flex items-center justify-center shrink-0">
+                <IconChevronRight className="text-lg" aria-hidden="true" />
+              </span>
+            </motion.button>
 
-            {/* Activities List Section */}
-            <section className="space-y-3 pt-1">
-              <div className="flex items-center justify-between text-xs px-1 select-none">
-                <h2 className="text-base md:text-lg font-bold text-text-main">
-                  Kegiatan hari ini
-                </h2>
-                <span className="text-text-muted text-xs md:text-sm font-medium">
-                  {totalCount} amaliyah
-                </span>
+            {/* BENTO GRID: Kegiatan Hari Ini (6 Cards, clickable popup forms) */}
+            <section aria-labelledby="kegiatan-hari-ini-heading" className="space-y-3.5">
+              <div className="flex items-center justify-between px-0.5 select-none">
+                <div>
+                  <h2
+                    id="kegiatan-hari-ini-heading"
+                    className="font-display text-lg md:text-xl font-bold text-text-main"
+                  >
+                    Kegiatan harian
+                  </h2>
+                  <p className="text-xs text-text-muted">
+                    Ketuk kartu untuk langsung mengisi catatan
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate("/kegiatan-khusus")}
+                  className="text-xs font-semibold text-primary-600 hover:text-primary-700 min-h-12 px-2 -mr-2 inline-flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  <span>Kegiatan khusus</span>
+                  <IconChevronRight className="text-sm" aria-hidden="true" />
+                </button>
               </div>
 
-              {/* Cards Grid: 1 col on mobile, 2 cols on tablet & desktop */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3">
-                {activities.map((item, idx) => {
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                {bentoActivities.map((item, idx) => {
                   const Icon = item.icon;
+                  const isDone = item.status === "sudah";
+                  const isHalangan = item.status === "berhalangan";
+
                   return (
-                    <motion.div
+                    <motion.button
                       key={item.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.25, delay: idx * 0.04 }}
-                      whileHover={{ y: -2 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => toggleActivity(item.id)}
-                      className="bg-bg-surface border border-border rounded-2xl p-3.5 md:p-4 flex items-center justify-between shadow-2xs hover:border-primary/40 transition-all cursor-pointer select-none"
+                      custom={idx}
+                      variants={listItem}
+                      initial="initial"
+                      animate="animate"
+                      whileTap={tapScale}
+                      type="button"
+                      onClick={() => openActivityModal(item.id)}
+                      className={`${item.spanClass} text-left bg-bg-surface border rounded-[1.5rem] p-4 flex flex-col justify-between gap-3.5 shadow-[var(--shadow-card)] transition-colors cursor-pointer select-none min-h-[124px] ${
+                        isDone
+                          ? "border-success-200 hover:border-success-600/50"
+                          : isHalangan
+                          ? "border-accent-200 hover:border-accent-400"
+                          : "border-border hover:border-primary-300"
+                      }`}
                     >
-                      <div className="flex items-center gap-3.5">
+                      <div className="flex items-start justify-between gap-2 w-full">
                         <div
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 transition-colors ${
-                            item.completed
-                              ? "bg-primary-surface text-primary"
-                              : "bg-bg-elevated text-text-muted"
+                          className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0 ${
+                            isDone
+                              ? "bg-success-50 text-success-600"
+                              : isHalangan
+                              ? "bg-accent-50 text-accent-600"
+                              : "bg-primary-50 text-primary-600"
                           }`}
                         >
-                          <Icon />
+                          <Icon aria-hidden="true" />
                         </div>
 
-                        <div>
-                          <h4 className="text-sm font-semibold text-text-main leading-tight">
-                            {item.title}
-                          </h4>
-                          <p className="text-xs text-text-muted mt-0.5">
-                            {item.subtitle}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div>
-                        {item.completed ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-primary-surface text-primary border border-primary/20 shadow-2xs">
-                            <LuCheck className="text-xs" />
-                            Sudah
-                          </span>
+                        {!item.hideStatusPill ? (
+                          isDone ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-success-50 text-success-700 border border-success-200">
+                              <IconCheckBold className="text-[10px]" aria-hidden="true" />
+                              <span>Sudah</span>
+                            </span>
+                          ) : isHalangan ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-accent-50 text-accent-700 border border-accent-200">
+                              <IconMinus className="text-[10px]" aria-hidden="true" />
+                              <span>Halangan</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-bg-elevated text-text-muted border border-border">
+                              <IconCircle className="text-[10px]" aria-hidden="true" />
+                              <span>Isi</span>
+                            </span>
+                          )
                         ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-bg-elevated text-text-muted border border-border">
-                            Belum
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-bg-base text-text-muted border border-border-subtle">
+                            Catatan
                           </span>
                         )}
                       </div>
-                    </motion.div>
+
+                      <div className="space-y-0.5 min-w-0 w-full">
+                        <h3 className="font-display text-base font-bold text-text-main leading-tight truncate">
+                          {item.title}
+                        </h3>
+                        <p className="text-xs text-text-muted line-clamp-2 leading-snug">
+                          {item.subtitle}
+                        </p>
+                      </div>
+                    </motion.button>
                   );
                 })}
               </div>
             </section>
           </div>
 
-          {/* ================= RIGHT / COMPANION COLUMN (DESKTOP) ================= */}
-          <div className="hidden lg:flex lg:col-span-5 xl:col-span-4 flex-col gap-5">
-            
-            {/* Widget 1: Jadwal Sholat & Waktu Buka Puasa */}
-            <div className="bg-bg-surface border border-border rounded-3xl p-5 shadow-xs flex flex-col gap-4">
-              <div className="flex items-center justify-between pb-2 border-b border-border/50">
-                <div className="flex items-center gap-2 text-text-main font-bold text-sm">
-                  <LuSunset className="text-primary text-lg" />
-                  <span>Jadwal Sholat & Buka Puasa</span>
+          {/* Desktop Companion Column */}
+          <aside className="hidden lg:flex lg:col-span-5 xl:col-span-4 flex-col gap-5">
+            {/* Widget 1: Jadwal Sholat API-ready + Countdown */}
+            <div className="bg-bg-surface border border-border rounded-[1.5rem] p-5 shadow-[var(--shadow-card)] flex flex-col gap-3.5">
+              <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-border-subtle">
+                <div className="flex items-center gap-2">
+                  <IconPrayerTime
+                    className="text-primary-600 text-xl shrink-0"
+                    aria-hidden="true"
+                  />
+                  <h3 className="font-display text-base font-bold text-text-main">
+                    Jadwal Sholat
+                  </h3>
                 </div>
+                <span className="text-[11px] text-text-muted font-medium">
+                  {prayerState.city}
+                </span>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
-                {PRAYER_SCHEDULE.map((p, idx) => (
-                  <div
-                    key={idx}
-                    className={`p-2.5 rounded-xl border text-center transition-all ${
-                      p.isNext
-                        ? "bg-primary-surface border-primary/40 text-primary font-bold shadow-2xs"
-                        : "bg-bg-elevated/50 border-border/50 text-text-main"
-                    }`}
-                  >
-                    <div className="text-[11px] text-text-muted">{p.name}</div>
-                    <div className="text-sm font-bold mt-0.5">{p.time}</div>
-                  </div>
-                ))}
+                {prayerState.schedule.map((p) => {
+                  const isNext = p.id === countdown.nextId;
+                  return (
+                    <div
+                      key={p.id}
+                      className={`p-2.5 rounded-2xl border text-center transition-colors ${
+                        isNext
+                          ? "bg-primary-50 border-primary-200 text-primary-700"
+                          : "bg-bg-base border-border-subtle text-text-main"
+                      }`}
+                    >
+                      <div className="text-[11px] text-text-muted font-medium">
+                        {p.name}
+                      </div>
+                      <div className="text-sm font-bold mt-0.5">{p.time}</div>
+                    </div>
+                  );
+                })}
               </div>
+
+              {/* Countdown caption */}
+              <div className="flex items-center justify-between gap-2 pt-1 text-xs">
+                <span className="inline-flex items-center gap-1.5 font-semibold text-primary-700">
+                  <IconClock className="text-sm shrink-0" aria-hidden="true" />
+                  <span>{countdown.text}</span>
+                </span>
+              </div>
+              <p className="text-[11px] text-text-muted -mt-2">
+                {prayerState.source}
+              </p>
             </div>
 
-            {/* Widget 2: Pintasan AI Assistant */}
-            <div className="bg-bg-surface border border-border rounded-3xl p-5 shadow-xs flex flex-col gap-3.5">
+            {/* Widget 2: Pintasan Tanya */}
+            <div className="bg-bg-surface border border-border rounded-[1.5rem] p-5 shadow-[var(--shadow-card)] flex flex-col gap-3.5">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary-surface text-primary flex items-center justify-center text-xl shrink-0">
-                  <LuBot />
+                <div className="w-11 h-11 rounded-2xl bg-primary-50 border border-primary-200 text-primary-600 flex items-center justify-center text-xl shrink-0">
+                  <IconChat aria-hidden="true" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-text-main">
-                    Al-Hikmah AI Assistant
+                  <h3 className="font-display text-base font-bold text-text-main">
+                    Tanya
                   </h3>
-                  <p className="text-xs text-text-muted font-normal">
-                    Konsultasi fikih & amaliyah Ramadan
+                  <p className="text-xs text-text-muted">
+                    Cari rujukan awal kegiatan Ramadan
                   </p>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2 pt-1">
+              <div className="flex flex-col gap-2">
                 <button
                   type="button"
                   onClick={() => navigate("/chat")}
-                  className="w-full text-left p-2.5 rounded-xl bg-bg-elevated/60 hover:bg-bg-elevated border border-border/50 text-xs text-text-main transition-colors cursor-pointer truncate flex items-center gap-2"
+                  className="w-full min-h-12 text-left px-3.5 py-2.5 rounded-2xl bg-bg-base hover:bg-bg-elevated border border-border-subtle text-xs text-text-main transition-colors cursor-pointer flex items-center gap-2"
                 >
-                  <LuCircleHelp className="text-primary text-sm shrink-0" />
-                  <span className="truncate">"Apa hukumnya wudhu pakai air kopi?"</span>
+                  <IconQuestion
+                    className="text-primary-600 text-base shrink-0"
+                    aria-hidden="true"
+                  />
+                  <span className="truncate">
+                    Syarat air untuk berwudhu dan dalilnya
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => navigate("/chat")}
-                  className="w-full text-left p-2.5 rounded-xl bg-bg-elevated/60 hover:bg-bg-elevated border border-border/50 text-xs text-text-main transition-colors cursor-pointer truncate flex items-center gap-2"
+                  className="w-full min-h-12 text-left px-3.5 py-2.5 rounded-2xl bg-bg-base hover:bg-bg-elevated border border-border-subtle text-xs text-text-main transition-colors cursor-pointer flex items-center gap-2"
                 >
-                  <LuSparkles className="text-accent text-sm shrink-0" />
-                  <span className="truncate">"Amalan utama pada malam Nuzulul Qur'an"</span>
+                  <IconSparkleFill
+                    className="text-accent-500 text-base shrink-0"
+                    aria-hidden="true"
+                  />
+                  <span className="truncate">
+                    Amalan pada malam Nuzulul Qur&apos;an
+                  </span>
                 </button>
               </div>
 
+              <p className="text-[11px] text-text-muted leading-relaxed">
+                Jawaban di fitur Tanya dapat keliru. Untuk persoalan hukum agama,
+                tanyakan langsung kepada guru atau orang tua.
+              </p>
+
               <motion.button
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
+                whileTap={tapScale}
                 type="button"
                 onClick={() => navigate("/chat")}
-                className="w-full py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer mt-1"
+                className="w-full min-h-12 px-4 rounded-full border border-border bg-bg-surface hover:bg-bg-elevated text-text-main text-xs font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
-                <LuMessageSquare className="text-sm" />
-                <span>Mulai Tanya AI Sekarang</span>
+                <IconChat className="text-base text-primary-600" aria-hidden="true" />
+                <span>Buka Halaman Tanya</span>
               </motion.button>
             </div>
 
-            {/* Widget 3: Mutiara Ramadan - HIGH CONTRAST */}
-            <div className="bg-accent-surface border border-accent/30 rounded-3xl p-5 shadow-xs flex flex-col gap-2.5">
-              <div className="flex items-center gap-2 text-xs font-bold text-[#451A03] uppercase tracking-wider">
-                <LuBookOpen className="text-sm text-[#451A03]" />
+            {/* Widget 3: Mutiara Ramadan */}
+            <div className="bg-accent-50 border border-accent-200 rounded-[1.5rem] p-5 shadow-[var(--shadow-card)] flex flex-col gap-2.5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-accent-700 uppercase tracking-wider">
+                <IconBookOpenText
+                  className="text-base text-accent-500"
+                  aria-hidden="true"
+                />
                 <span>Mutiara Ramadan</span>
               </div>
-              <p className="text-xs md:text-sm text-[#78350F] font-medium leading-relaxed italic">
-                "Barangsiapa yang berpuasa Ramadan karena iman dan mengharap pahala dari Allah, maka akan diampuni dosa-dosanya yang telah lalu."
+              <p className="text-sm text-accent-800 leading-relaxed italic">
+                &ldquo;Barangsiapa yang berpuasa Ramadan karena iman dan mengharap
+                pahala dari Allah, maka diampuni dosa-dosanya yang telah lalu.&rdquo;
               </p>
-              <span className="text-[11px] text-[#92400E] font-semibold">
-                (HR. Bukhari no. 38 & Muslim no. 760)
+              <span className="text-xs text-accent-600 font-semibold">
+                HR. Bukhari no. 38 &amp; Muslim no. 760
               </span>
             </div>
-
-          </div>
+          </aside>
         </div>
       </main>
 
-      {/* ===================== FLOATING BOTTOM NAVIGATION BAR (MOBILE) ===================== */}
-      <nav className="lg:hidden fixed bottom-3 md:bottom-5 inset-x-0 max-w-sm md:max-w-md mx-auto px-2 py-1.5 bg-bg-surface/90 backdrop-blur-md border border-border rounded-2xl shadow-lg flex items-center justify-between z-30 select-none">
-        <button
-          type="button"
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-white text-xs font-medium shadow-xs cursor-pointer transition-colors"
-        >
-          <LuHouse className="text-base" />
-          <span>Hari Ini</span>
-        </button>
+      {/* Responsive Popup / BottomSheet for Bento Grid Activity Forms */}
+      <BottomSheet
+        isOpen={Boolean(activeModal)}
+        onClose={() => setActiveModal(null)}
+        title={modalTitleMap[activeModal] || "Catat Kegiatan"}
+        subtitle="Selasa, 24 Feb 2027 · 16 Ramadan 1448 H"
+        maxWidthClass="sm:max-w-xl"
+      >
+        <div className="space-y-5">
+          {activeModal === "shaum" && (
+            <ShaumForm value={draftShaum} onChange={setDraftShaum} />
+          )}
+          {activeModal === "sholat" && (
+            <SholatWajibForm
+              prayersValue={draftPrayers}
+              onChangePrayers={setDraftPrayers}
+              sunnahValue={draftSunnah}
+              onChangeSunnah={setDraftSunnah}
+              includeSunnahSection
+            />
+          )}
+          {activeModal === "sunnah" && (
+            <SholatSunnahForm value={draftSunnah} onChange={setDraftSunnah} />
+          )}
+          {activeModal === "tadarus" && (
+            <TadarusForm value={draftTadarus} onChange={setDraftTadarus} />
+          )}
+          {activeModal === "infaq" && (
+            <InfaqForm value={draftInfaq} onChange={setDraftInfaq} />
+          )}
+          {activeModal === "ceramah" && (
+            <CeramahForm value={draftCeramah} onChange={setDraftCeramah} />
+          )}
 
-        <button
-          type="button"
-          onClick={() => navigate("/ramadan")}
-          className="flex flex-col items-center gap-0.5 px-3 py-1 text-text-muted hover:text-text-main text-xs transition-colors cursor-pointer"
-        >
-          <LuCalendarDays className="text-base" />
-          <span>Ramadan</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => navigate("/chat")}
-          className="flex flex-col items-center gap-0.5 px-3 py-1 text-text-muted hover:text-text-main text-xs transition-colors cursor-pointer"
-          title="Buka AI Chat"
-        >
-          <LuMessageSquare className="text-base" />
-          <span>Tanya</span>
-        </button>
-
-        <button
-          type="button"
-          className="flex flex-col items-center gap-0.5 px-3 py-1 text-text-muted hover:text-text-main text-xs transition-colors cursor-pointer"
-        >
-          <LuUser className="text-base" />
-          <span>Profil</span>
-        </button>
-      </nav>
+          <div className="pt-2 flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 border-t border-border-subtle">
+            <motion.button
+              whileTap={tapScale}
+              type="button"
+              onClick={() => setActiveModal(null)}
+              className="w-full sm:w-auto min-h-12 px-5 rounded-full border border-border bg-bg-surface hover:bg-bg-elevated text-text-main text-sm font-semibold transition-colors cursor-pointer"
+            >
+              Batal
+            </motion.button>
+            <motion.button
+              whileTap={tapScale}
+              type="button"
+              onClick={handleSaveModal}
+              className="w-full sm:w-auto min-h-12 px-6 rounded-full bg-primary-600 hover:bg-primary-700 text-on-primary text-sm font-semibold shadow-[var(--shadow-card)] transition-colors cursor-pointer flex items-center justify-center gap-2"
+            >
+              <IconCheckBold className="text-base" aria-hidden="true" />
+              <span>Simpan Catatan</span>
+            </motion.button>
+          </div>
+        </div>
+      </BottomSheet>
     </AppLayout>
   );
 }

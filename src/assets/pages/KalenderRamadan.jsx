@@ -1,23 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
-import {
-  LuCheck,
-  LuClock,
-  LuCircle,
-  LuCircleDot,
-  LuStar,
-  LuMoon,
-  LuHouse,
-  LuCalendarDays,
-  LuMessageSquare,
-  LuUser,
-  LuArrowRight,
-  LuSparkles,
-} from "react-icons/lu";
 import AppLayout from "../components/AppLayout";
+import { calendarCellHover, tapScale } from "../../lib/motion";
+import {
+  IconCheckBold,
+  IconClock,
+  IconCircle,
+  IconPartial,
+  IconMinus,
+  IconStarFill,
+  IconMoon,
+  IconCalendarDays,
+  IconArrowRight,
+  IconSparkleFill,
+} from "../../lib/icons";
 
-// Ramadan 30 Days Data mapping
 const RAMADAN_DAYS = [
   { day: 1, date: "9 Feb", status: "lengkap", completed: 5, total: 5 },
   { day: 2, date: "10 Feb", status: "lengkap", completed: 5, total: 5 },
@@ -30,25 +28,109 @@ const RAMADAN_DAYS = [
   { day: 9, date: "17 Feb", status: "kosong", completed: 0, total: 5 },
   { day: 10, date: "18 Feb", status: "lengkap", completed: 5, total: 5 },
   { day: 11, date: "19 Feb", status: "lengkap", completed: 5, total: 5 },
-  { day: 12, date: "20 Feb", status: "sebagian", completed: 2, total: 5 },
+  { day: 12, date: "20 Feb", status: "berhalangan", completed: 0, total: 5 },
   { day: 13, date: "21 Feb", status: "susulan", completed: 5, total: 5 },
   { day: 14, date: "22 Feb", status: "lengkap", completed: 5, total: 5 },
   { day: 15, date: "23 Feb", status: "lengkap", completed: 5, total: 5 },
-  { day: 16, date: "24 Feb", status: "sebagian", isToday: true, completed: 3, total: 5 },
-  { day: 17, date: "25 Feb", status: "mendatang", isSpecial: "nuzulul", completed: 0, total: 5 },
+  {
+    day: 16,
+    date: "24 Feb",
+    status: "sebagian",
+    isToday: true,
+    completed: 3,
+    total: 5,
+  },
+  {
+    day: 17,
+    date: "25 Feb",
+    status: "mendatang",
+    isSpecial: "nuzulul",
+    completed: 0,
+    total: 5,
+  },
   { day: 18, date: "26 Feb", status: "mendatang", completed: 0, total: 5 },
   { day: 19, date: "27 Feb", status: "mendatang", completed: 0, total: 5 },
   { day: 20, date: "28 Feb", status: "mendatang", completed: 0, total: 5 },
-  { day: 21, date: "1 Mar", status: "mendatang", isSpecial: "lailatul", completed: 0, total: 5 },
-  { day: 22, date: "2 Mar", status: "mendatang", isSpecial: "lailatul", completed: 0, total: 5 },
-  { day: 23, date: "3 Mar", status: "mendatang", isSpecial: "lailatul", completed: 0, total: 5 },
-  { day: 24, date: "4 Mar", status: "mendatang", isSpecial: "lailatul", completed: 0, total: 5 },
-  { day: 25, date: "5 Mar", status: "mendatang", isSpecial: "lailatul", completed: 0, total: 5 },
-  { day: 26, date: "6 Mar", status: "mendatang", isSpecial: "lailatul", completed: 0, total: 5 },
-  { day: 27, date: "7 Mar", status: "mendatang", isSpecial: "lailatul", completed: 0, total: 5 },
-  { day: 28, date: "8 Mar", status: "mendatang", isSpecial: "lailatul", completed: 0, total: 5 },
-  { day: 29, date: "9 Mar", status: "mendatang", isSpecial: "lailatul", completed: 0, total: 5 },
-  { day: 30, date: "10 Mar", status: "mendatang", isSpecial: "lailatul", completed: 0, total: 5 },
+  {
+    day: 21,
+    date: "1 Mar",
+    status: "mendatang",
+    isSpecial: "lailatul",
+    completed: 0,
+    total: 5,
+  },
+  {
+    day: 22,
+    date: "2 Mar",
+    status: "mendatang",
+    isSpecial: "lailatul",
+    completed: 0,
+    total: 5,
+  },
+  {
+    day: 23,
+    date: "3 Mar",
+    status: "mendatang",
+    isSpecial: "lailatul",
+    completed: 0,
+    total: 5,
+  },
+  {
+    day: 24,
+    date: "4 Mar",
+    status: "mendatang",
+    isSpecial: "lailatul",
+    completed: 0,
+    total: 5,
+  },
+  {
+    day: 25,
+    date: "5 Mar",
+    status: "mendatang",
+    isSpecial: "lailatul",
+    completed: 0,
+    total: 5,
+  },
+  {
+    day: 26,
+    date: "6 Mar",
+    status: "mendatang",
+    isSpecial: "lailatul",
+    completed: 0,
+    total: 5,
+  },
+  {
+    day: 27,
+    date: "7 Mar",
+    status: "mendatang",
+    isSpecial: "lailatul",
+    completed: 0,
+    total: 5,
+  },
+  {
+    day: 28,
+    date: "8 Mar",
+    status: "mendatang",
+    isSpecial: "lailatul",
+    completed: 0,
+    total: 5,
+  },
+  {
+    day: 29,
+    date: "9 Mar",
+    status: "mendatang",
+    isSpecial: "lailatul",
+    completed: 0,
+    total: 5,
+  },
+  {
+    day: 30,
+    date: "10 Mar",
+    status: "mendatang",
+    isSpecial: "lailatul",
+    completed: 0,
+    total: 5,
+  },
 ];
 
 export default function KalenderRamadan() {
@@ -64,10 +146,6 @@ export default function KalenderRamadan() {
     }
   };
 
-  const handleOpenDetail = (dayNumber) => {
-    navigate(`/ramadan/detail/${dayNumber}`);
-  };
-
   const lengkapCount = RAMADAN_DAYS.filter((d) => d.status === "lengkap").length;
   const sebagianCount = RAMADAN_DAYS.filter((d) => d.status === "sebagian").length;
   const susulanCount = RAMADAN_DAYS.filter((d) => d.status === "susulan").length;
@@ -75,125 +153,143 @@ export default function KalenderRamadan() {
 
   return (
     <AppLayout>
-      {/* ===================== MAIN CONTENT WRAPPER ===================== */}
-      <main className="w-full max-w-md md:max-w-3xl lg:max-w-6xl xl:max-w-7xl mx-auto flex-1 flex flex-col px-4 md:px-6 lg:px-8 pt-6 pb-28 lg:pb-12 gap-6">
-        
-        {/* ===================== TOP PAGE HEADER ===================== */}
-        <header className="flex items-center justify-between select-none">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-text-main">
-              Kalender Ramadan
-            </h1>
-            <p className="text-xs md:text-sm text-text-muted font-normal mt-0.5">
-              Ramadan 1448 H · Februari–Maret 2027
-            </p>
-          </div>
+      <main className="w-full max-w-[1100px] mx-auto flex-1 flex flex-col px-4 md:px-6 lg:px-8 pt-6 pb-28 lg:pb-12 gap-5 md:gap-6">
+        {/* Header */}
+        <header className="select-none">
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-text-main">
+            Kalender Ramadan
+          </h1>
+          <p className="text-xs md:text-sm text-text-muted mt-0.5">
+            Ramadan 1448 H · Februari–Maret 2027
+          </p>
         </header>
 
-        {/* ===================== RESPONSIVE LAYOUT ===================== */}
-        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
-          
-          {/* ================= LEFT / PRIMARY CALENDAR COLUMN ================= */}
-          <div className="w-full lg:col-span-7 xl:col-span-8 flex flex-col gap-5">
-            
-            {/* Highlight Banner: Hari ke-16 berjalan & Nuzulul Qur'an */}
-            <div className="w-full bg-accent-surface border border-accent/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+        {/* Responsive Grid */}
+        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Calendar Column */}
+          <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-5">
+            {/* Highlight Banner */}
+            <div className="w-full bg-accent-50 border border-accent-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-[var(--shadow-card)]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-accent text-white flex items-center justify-center text-lg shrink-0 shadow-xs">
-                  <LuSparkles />
+                <div className="w-11 h-11 rounded-2xl bg-accent-500 text-on-primary flex items-center justify-center text-xl shrink-0">
+                  <IconSparkleFill aria-hidden="true" />
                 </div>
                 <div>
-                  <span className="text-sm md:text-base font-bold text-[#451A03] block">
+                  <span className="font-display text-base font-bold text-accent-800 block">
                     Hari ke-16 berjalan
                   </span>
-                  <span className="text-xs text-[#78350F] font-medium">
-                    14 hari tersisa menuju Hari Raya Idul Fitri
+                  <span className="text-xs text-accent-700 font-medium">
+                    Catatan hari yang terlewat tetap bisa diisi sebagai Susulan
                   </span>
                 </div>
               </div>
 
-              <span className="text-xs font-bold text-[#78350F] bg-accent/20 px-3 py-1.5 rounded-lg shadow-2xs shrink-0">
-                17 · Nuzulul Qur'an
+              <span className="text-xs font-semibold text-accent-800 bg-accent-100 border border-accent-200 px-3 py-1.5 rounded-full shrink-0">
+                17 · Nuzulul Qur&apos;an
               </span>
             </div>
 
-            {/* 30-Day Ramadan Grid */}
-            <div className="bg-bg-surface border border-border rounded-3xl p-4 md:p-6 shadow-xs">
-              <div className="flex items-center justify-between pb-4 mb-3 border-b border-border/50">
+            {/* 30-Day Grid (No stagger animation on >20 items) */}
+            <section className="bg-bg-surface border border-border rounded-[1.75rem] p-4 md:p-6 shadow-[var(--shadow-card)]">
+              <div className="flex items-center justify-between pb-4 mb-4 border-b border-border-subtle">
                 <div className="flex items-center gap-2">
-                  <LuCalendarDays className="text-primary text-lg" />
-                  <span className="text-sm md:text-base font-bold text-text-main">
-                    Jadwal & Catatan 30 Hari
-                  </span>
+                  <IconCalendarDays
+                    className="text-primary-600 text-xl"
+                    aria-hidden="true"
+                  />
+                  <h2 className="font-display text-base md:text-lg font-bold text-text-main">
+                    Catatan 30 Hari
+                  </h2>
                 </div>
                 <span className="text-xs text-text-muted hidden sm:inline">
-                  Klik tanggal untuk melihat ringkasan amaliyah
+                  Pilih tanggal untuk detail atau susulan
                 </span>
               </div>
 
-              <div className="grid grid-cols-5 md:grid-cols-6 gap-2.5 sm:gap-3 lg:gap-3.5">
+              <div className="grid grid-cols-5 md:grid-cols-6 gap-2 sm:gap-3">
                 {RAMADAN_DAYS.map((item) => {
                   const isSelected = selectedDayItem.day === item.day;
-                  let cardStyle = "border-border bg-bg-surface text-text-main";
-                  let iconElement = null;
-                  let statusBadgeText = "";
+                  let cardStyle =
+                    "border-border bg-bg-surface text-text-main hover:border-primary-300";
+                  let iconElement = <IconCircle className="text-xs" aria-hidden="true" />;
+                  let statusLabel = "Kosong";
 
                   if (item.status === "lengkap") {
                     cardStyle =
-                      "border-primary/50 bg-primary-surface/30 text-primary shadow-2xs hover:border-primary";
-                    iconElement = <LuCheck className="text-sm md:text-base font-bold" />;
-                    statusBadgeText = "Lengkap";
-                  } else if (item.status === "susulan") {
-                    cardStyle =
-                      "border-amber-400 bg-amber-50/60 text-amber-600 shadow-2xs hover:border-amber-500";
-                    iconElement = <LuClock className="text-xs md:text-sm font-bold" />;
-                    statusBadgeText = "Susulan";
+                      "border-success-200 bg-success-50 text-success-700 hover:border-success-600";
+                    iconElement = <IconCheckBold className="text-sm" aria-hidden="true" />;
+                    statusLabel = "Sudah";
                   } else if (item.status === "sebagian") {
                     cardStyle =
-                      "border-amber-400 bg-amber-50/60 text-amber-600 shadow-2xs hover:border-amber-500";
-                    iconElement = <LuCircleDot className="text-xs md:text-sm font-bold" />;
-                    statusBadgeText = "Sebagian";
+                      "border-primary-200 bg-primary-50 text-primary-700 hover:border-primary-500";
+                    iconElement = <IconPartial className="text-sm" aria-hidden="true" />;
+                    statusLabel = "Sebagian";
+                  } else if (item.status === "susulan") {
+                    cardStyle =
+                      "border-accent-300 border-dashed bg-accent-50 text-accent-700 hover:border-accent-500";
+                    iconElement = <IconClock className="text-sm" aria-hidden="true" />;
+                    statusLabel = "Susulan";
+                  } else if (item.status === "berhalangan") {
+                    cardStyle =
+                      "border-accent-200 bg-accent-50 text-accent-700 hover:border-accent-400";
+                    iconElement = <IconMinus className="text-sm" aria-hidden="true" />;
+                    statusLabel = "Halangan";
                   } else if (item.status === "kosong") {
                     cardStyle =
-                      "border-border bg-bg-surface text-text-muted/70 hover:border-text-muted";
-                    iconElement = <LuCircle className="text-xs" />;
-                    statusBadgeText = "Kosong";
+                      "border-border bg-bg-surface text-text-muted hover:border-primary-300";
+                    iconElement = <IconCircle className="text-xs" aria-hidden="true" />;
+                    statusLabel = "Belum";
                   } else if (item.status === "mendatang") {
-                    if (item.isSpecial === "lailatul") {
+                    if (item.isSpecial === "nuzulul") {
                       cardStyle =
-                        "border-amber-300/80 bg-bg-surface/50 text-amber-700/80 hover:border-amber-400";
-                    } else if (item.isSpecial === "nuzulul") {
+                        "border-accent-300 bg-accent-50 text-accent-800 hover:border-accent-500";
+                    } else if (item.isSpecial === "lailatul") {
                       cardStyle =
-                        "border-amber-400 bg-accent-surface text-[#451A03] font-bold";
+                        "border-accent-200 bg-bg-base/70 text-accent-700 hover:border-accent-400";
                     } else {
                       cardStyle =
-                        "border-dashed border-border/80 bg-bg-surface/40 text-text-muted/50";
+                        "border-dashed border-border bg-bg-base/60 text-text-muted";
                     }
-                    iconElement = <span className="text-[10px] leading-none">•</span>;
-                    statusBadgeText = "Mendatang";
+                    iconElement = (
+                      <span className="text-xs leading-none" aria-hidden="true">
+                        ·
+                      </span>
+                    );
+                    statusLabel = "Nanti";
                   }
+
+                  const todayRing = item.isToday
+                    ? "ring-2 ring-primary-600 ring-offset-2 ring-offset-bg-surface"
+                    : isSelected
+                    ? "ring-2 ring-primary-300 ring-offset-1 ring-offset-bg-surface"
+                    : "";
 
                   return (
                     <motion.button
                       key={item.day}
-                      whileHover={{ scale: 1.04 }}
-                      whileTap={{ scale: 0.96 }}
+                      whileHover={calendarCellHover}
+                      whileTap={tapScale}
                       type="button"
                       onClick={() => handleDayClick(item)}
-                      className={`aspect-square rounded-2xl border p-2 sm:p-2.5 flex flex-col items-center justify-between transition-all cursor-pointer relative select-none ${cardStyle} ${
-                        isSelected
-                          ? "ring-2 ring-primary ring-offset-2 ring-offset-bg-base shadow-md"
-                          : ""
+                      aria-label={`Hari ke-${item.day} Ramadan (${item.date}), status ${statusLabel}${
+                        item.isToday ? ", hari ini" : ""
                       }`}
+                      className={`min-h-[58px] aspect-square rounded-2xl border p-1.5 sm:p-2 flex flex-col items-center justify-between transition-colors cursor-pointer relative select-none ${cardStyle} ${todayRing}`}
                     >
                       {item.isSpecial === "nuzulul" && (
-                        <span className="absolute top-1.5 right-1.5 text-xs text-accent" title="Nuzulul Qur'an">
-                          <LuStar />
+                        <span
+                          className="absolute top-1.5 right-1.5 text-[11px] text-accent-500"
+                          aria-hidden="true"
+                        >
+                          <IconStarFill />
                         </span>
                       )}
                       {item.isSpecial === "lailatul" && (
-                        <span className="absolute top-1.5 right-1.5 text-xs text-amber-600" title="10 Malam Terakhir">
-                          <LuMoon />
+                        <span
+                          className="absolute top-1.5 right-1.5 text-[11px] text-accent-500"
+                          aria-hidden="true"
+                        >
+                          <IconMoon />
                         </span>
                       )}
 
@@ -210,226 +306,186 @@ export default function KalenderRamadan() {
                         {iconElement}
                       </span>
 
-                      <span className="text-[9px] font-medium hidden md:inline leading-none truncate max-w-full">
-                        {statusBadgeText}
+                      <span className="text-[10px] font-medium hidden md:inline leading-none truncate max-w-full">
+                        {statusLabel}
                       </span>
                     </motion.button>
                   );
                 })}
               </div>
-            </div>
+            </section>
 
-            {/* Legend Box */}
-            <div className="bg-bg-surface border border-border rounded-2xl p-4 text-xs space-y-3 shadow-2xs">
-              <div className="text-xs font-bold text-text-muted uppercase tracking-wider px-0.5">
-                Keterangan Status Catatan
+            {/* Legend */}
+            <div className="bg-bg-surface border border-border rounded-2xl p-4 text-xs space-y-3 shadow-[var(--shadow-card)]">
+              <div className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                Keterangan Status
               </div>
 
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 text-text-muted">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 text-text-main">
                 <span className="flex items-center gap-1.5">
-                  <LuCheck className="text-primary text-sm font-bold" />
-                  <span>Lengkap</span>
+                  <IconCheckBold className="text-success-600 text-sm shrink-0" aria-hidden="true" />
+                  <span>Sudah</span>
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <LuCircleDot className="text-amber-500 text-sm font-bold" />
+                  <IconPartial className="text-primary-600 text-sm shrink-0" aria-hidden="true" />
                   <span>Sebagian</span>
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <LuClock className="text-amber-500 text-sm" />
+                  <IconClock className="text-accent-600 text-sm shrink-0" aria-hidden="true" />
                   <span>Susulan</span>
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <LuCircle className="text-text-muted text-xs" />
-                  <span>Kosong</span>
+                  <IconMinus className="text-accent-600 text-sm shrink-0" aria-hidden="true" />
+                  <span>Berhalangan</span>
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="text-text-muted font-bold text-sm">•</span>
-                  <span>Mendatang</span>
+                  <IconCircle className="text-text-muted text-xs shrink-0" aria-hidden="true" />
+                  <span>Belum</span>
                 </span>
               </div>
 
-              <div className="pt-2.5 border-t border-border/60 flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold text-text-muted">
-                <span className="flex items-center gap-1 text-accent">
-                  <LuStar className="text-xs" />
-                  <span>17 · Nuzulul Qur'an</span>
+              <div className="pt-2.5 border-t border-border-subtle flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-accent-700">
+                <span className="flex items-center gap-1.5">
+                  <IconStarFill className="text-accent-500 text-sm" aria-hidden="true" />
+                  <span>17 · Nuzulul Qur&apos;an</span>
                 </span>
-                <span className="flex items-center gap-1 text-amber-600">
-                  <LuMoon className="text-xs" />
-                  <span>21–30 · 10 Malam Terakhir (Lailatul Qadr)</span>
+                <span className="flex items-center gap-1.5">
+                  <IconMoon className="text-accent-500 text-sm" aria-hidden="true" />
+                  <span>21–30 · 10 Malam Terakhir</span>
                 </span>
               </div>
             </div>
           </div>
 
-          {/* ================= RIGHT / COMPANION SIDEBAR (DESKTOP) ================= */}
-          <div className="hidden lg:flex lg:col-span-5 xl:col-span-4 flex-col gap-5 sticky top-6">
-            
-            {/* Widget 1: Detail Hari Terpilih Inspector */}
-            <div className="bg-bg-surface border border-border rounded-3xl p-5 shadow-xs flex flex-col gap-4">
-              <div className="flex items-center justify-between pb-2 border-b border-border/50">
-                <div>
-                  <h3 className="text-base font-bold text-text-main mt-0.5">
-                    Hari ke-{selectedDayItem.day} Ramadan 1448 H
-                  </h3>
-                  <p className="text-xs text-text-muted mt-0.5 font-normal">
-                    {selectedDayItem.date} 2027 · {selectedDayItem.isToday ? "Hari Ini" : "Catatan Harian"}
-                  </p>
-                </div>
+          {/* Desktop Companion Column */}
+          <aside className="hidden lg:flex lg:col-span-5 xl:col-span-4 flex-col gap-5 sticky top-6">
+            {/* Selected Day Inspector */}
+            <div className="bg-bg-surface border border-border rounded-[1.5rem] p-5 shadow-[var(--shadow-card)] flex flex-col gap-4">
+              <div className="pb-3 border-b border-border-subtle">
+                <span className="text-xs font-semibold text-primary-600 uppercase tracking-wider">
+                  {selectedDayItem.isToday ? "Hari Ini" : "Ringkasan Tanggal"}
+                </span>
+                <h3 className="font-display text-lg font-bold text-text-main mt-0.5">
+                  Hari ke-{selectedDayItem.day} Ramadan 1448 H
+                </h3>
+                <p className="text-xs text-text-muted mt-0.5">
+                  {selectedDayItem.date} 2027
+                </p>
               </div>
 
-              {/* Progress Summary for Selected Day */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-text-muted">
-                  <span>Progres Amaliyah</span>
-                  <span className="font-bold text-text-main">
-                    {selectedDayItem.completed} dari {selectedDayItem.total} Selesai
+                  <span>Progres Catatan</span>
+                  <span className="font-semibold text-text-main">
+                    {selectedDayItem.completed} dari {selectedDayItem.total} tercatat
                   </span>
                 </div>
-                <div className="w-full h-2 rounded-md bg-bg-elevated overflow-hidden">
+                <div className="w-full h-2 rounded-full bg-bg-elevated overflow-hidden">
                   <div
-                    className="h-full bg-primary rounded-md transition-all duration-300"
+                    className="h-full bg-primary-600 rounded-full transition-all duration-300"
                     style={{
-                      width: `${(selectedDayItem.completed / selectedDayItem.total) * 100}%`,
+                      width: `${
+                        (selectedDayItem.completed / selectedDayItem.total) * 100
+                      }%`,
                     }}
                   />
                 </div>
               </div>
 
-              {/* Quick Amaliyah checklist preview */}
-              <div className="bg-bg-elevated/40 rounded-2xl p-3 border border-border/40 text-xs space-y-2">
+              <div className="bg-bg-base rounded-2xl p-3.5 border border-border-subtle text-xs space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-text-muted">Shaum Puasa:</span>
+                  <span className="text-text-muted">Shaum</span>
                   <span className="font-semibold text-text-main">
-                    {selectedDayItem.completed > 0 ? "Sudah" : "Belum / Berhalangan"}
+                    {selectedDayItem.status === "berhalangan"
+                      ? "Berhalangan"
+                      : selectedDayItem.completed > 0
+                      ? "Sudah"
+                      : "Belum"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-text-muted">Sholat Wajib (5 Waktu):</span>
+                  <span className="text-text-muted">Sholat Wajib</span>
                   <span className="font-semibold text-text-main">
-                    {selectedDayItem.completed >= 4 ? "5/5 Waktu" : "3/5 Waktu"}
+                    {selectedDayItem.completed >= 4
+                      ? "5/5 Waktu"
+                      : selectedDayItem.completed > 0
+                      ? "3/5 Waktu"
+                      : "Belum dicatat"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-text-muted">Sholat Tarawih:</span>
+                  <span className="text-text-muted">Tarawih</span>
                   <span className="font-semibold text-text-main">
                     {selectedDayItem.status === "lengkap" ? "Sudah" : "Belum"}
                   </span>
                 </div>
               </div>
 
-              {/* Action Button */}
               <motion.button
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
+                whileTap={tapScale}
                 type="button"
-                onClick={() => handleOpenDetail(selectedDayItem.day)}
-                className="w-full py-3 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                onClick={() =>
+                  navigate(`/ramadan/detail/${selectedDayItem.day}`)
+                }
+                className="w-full min-h-12 px-5 rounded-full bg-primary-600 hover:bg-primary-700 text-on-primary text-sm font-semibold shadow-[var(--shadow-card)] transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>Buka Detail / Isi Susulan</span>
-                <LuArrowRight className="text-sm" />
+                <IconArrowRight className="text-base" aria-hidden="true" />
               </motion.button>
             </div>
 
-            {/* Widget 2: Month Stats & Overview */}
-            <div className="bg-bg-surface border border-border rounded-3xl p-5 shadow-xs flex flex-col gap-3.5">
+            {/* Month Overview */}
+            <div className="bg-bg-surface border border-border rounded-[1.5rem] p-5 shadow-[var(--shadow-card)] flex flex-col gap-3.5">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider">
-                  Ringkasan Bulan Ramadan
+                <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                  Ringkasan Bulan Ini
                 </h3>
-                <span className="text-xs font-semibold text-primary">16 / 30 Hari</span>
+                <span className="text-xs font-semibold text-primary-600">
+                  16 / 30 Hari
+                </span>
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
-                <div className="p-3 rounded-2xl bg-primary-surface/40 border border-primary/20 text-center">
-                  <div className="text-lg font-bold text-primary">{lengkapCount}</div>
-                  <div className="text-[11px] text-text-muted font-medium mt-0.5">Hari Lengkap</div>
+                <div className="p-3.5 rounded-2xl bg-success-50 border border-success-200 text-center">
+                  <div className="font-display text-xl font-bold text-success-700">
+                    {lengkapCount}
+                  </div>
+                  <div className="text-xs text-text-muted font-medium mt-0.5">
+                    Hari Lengkap
+                  </div>
                 </div>
 
-                <div className="p-3 rounded-2xl bg-amber-50 border border-amber-300/40 text-center">
-                  <div className="text-lg font-bold text-amber-600">
+                <div className="p-3.5 rounded-2xl bg-primary-50 border border-primary-200 text-center">
+                  <div className="font-display text-xl font-bold text-primary-700">
                     {sebagianCount}
                   </div>
-                  <div className="text-[11px] text-text-muted font-medium mt-0.5">Hari Sebagian</div>
+                  <div className="text-xs text-text-muted font-medium mt-0.5">
+                    Hari Sebagian
+                  </div>
                 </div>
 
-                <div className="p-3 rounded-2xl bg-amber-50 border border-amber-300/40 text-center">
-                  <div className="text-lg font-bold text-amber-600">
+                <div className="p-3.5 rounded-2xl bg-accent-50 border border-accent-200 text-center">
+                  <div className="font-display text-xl font-bold text-accent-700">
                     {susulanCount}
                   </div>
-                  <div className="text-[11px] text-text-muted font-medium mt-0.5">Catatan Susulan</div>
+                  <div className="text-xs text-text-muted font-medium mt-0.5">
+                    Catatan Susulan
+                  </div>
                 </div>
 
-                <div className="p-3 rounded-2xl bg-bg-elevated border border-border text-center">
-                  <div className="text-lg font-bold text-text-muted">{kosongCount}</div>
-                  <div className="text-[11px] text-text-muted font-medium mt-0.5">Hari Kosong</div>
+                <div className="p-3.5 rounded-2xl bg-bg-elevated border border-border text-center">
+                  <div className="font-display text-xl font-bold text-text-main">
+                    {kosongCount}
+                  </div>
+                  <div className="text-xs text-text-muted font-medium mt-0.5">
+                    Belum Diisi
+                  </div>
                 </div>
               </div>
             </div>
-
-            {/* Widget 3: Agenda Utama Ramadan */}
-            <div className="bg-accent-surface border border-accent/30 rounded-3xl p-5 shadow-xs flex flex-col gap-4">
-              <div className="flex items-center gap-2 text-xs font-bold text-[#451A03] uppercase tracking-wider">
-                <LuStar className="text-sm text-accent" />
-                <span>Agenda Penting Ramadan</span>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                <div className="flex items-center justify-between text-[#451A03] font-semibold">
-                  <span>17 Ramadan · Nuzulul Qur'an</span>
-                  <span className="text-[11px] text-[#78350F]">Besok Malam</span>
-                </div>
-                <div className="flex items-center justify-between text-[#451A03] font-semibold">
-                  <span>21–30 Ramadan · 10 Malam Terakhir</span>
-                  <span className="text-[11px] text-[#78350F]">5 Hari Lagi</span>
-                </div>
-                <div className="flex items-center justify-between text-[#451A03] font-semibold">
-                  <span>1 Syawal 1448 H · Hari Raya Idul Fitri</span>
-                  <span className="text-[11px] text-[#78350F]">14 Hari Lagi</span>
-                </div>
-              </div>
-            </div>
-
-          </div>
+          </aside>
         </div>
       </main>
-
-      {/* ===================== FLOATING BOTTOM NAVIGATION BAR (MOBILE) ===================== */}
-      <nav className="lg:hidden fixed bottom-3 md:bottom-5 inset-x-0 max-w-sm md:max-w-md mx-auto px-2 py-1.5 bg-bg-surface/90 backdrop-blur-md border border-border rounded-2xl shadow-lg flex items-center justify-between z-30 select-none">
-        <button
-          type="button"
-          onClick={() => navigate("/")}
-          className="flex flex-col items-center gap-0.5 px-3 py-1 text-text-muted hover:text-text-main text-xs transition-colors cursor-pointer"
-        >
-          <LuHouse className="text-base" />
-          <span>Hari Ini</span>
-        </button>
-
-        <button
-          type="button"
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-white text-xs font-medium shadow-xs cursor-pointer transition-colors"
-        >
-          <LuCalendarDays className="text-base" />
-          <span>Ramadan</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => navigate("/chat")}
-          className="flex flex-col items-center gap-0.5 px-3 py-1 text-text-muted hover:text-text-main text-xs transition-colors cursor-pointer"
-          title="Buka AI Chat"
-        >
-          <LuMessageSquare className="text-base" />
-          <span>Tanya</span>
-        </button>
-
-        <button
-          type="button"
-          className="flex flex-col items-center gap-0.5 px-3 py-1 text-text-muted hover:text-text-main text-xs transition-colors cursor-pointer"
-        >
-          <LuUser className="text-base" />
-          <span>Profil</span>
-        </button>
-      </nav>
     </AppLayout>
   );
 }

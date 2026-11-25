@@ -1,58 +1,37 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { DEMO_ACCOUNTS } from "../data/demoData";
+import { AuthContext } from "./authStore";
 
-const DEMO_ACCOUNTS = {
-  guru: {
-    id: "guru-1",
-    role: "guru",
-    name: "Ustadz Rakan Shaka, S.Pd.I",
-    email: "rakanshaka3@gmail.com",
-    class: "VIII-A",
-    title: "Wali Kelas VIII-A & Guru PAI",
-    avatar: "R",
-    initials: "RS",
-  },
-  siswa: {
-    id: "siswa-1",
-    role: "siswa",
-    name: "Faris Faizulhaq Alakiyas",
-    email: "faris@alhikmah.id",
-    class: "VIII-A",
-    nis: "202408112",
-    title: "Siswa Kelas VIII-A",
-    avatar: "F",
-    initials: "FA",
-  },
-  ortu: {
-    id: "ortu-1",
-    role: "orang-tua",
-    name: "Ibu Fauzan (Wali Santri)",
-    email: "wali.fauzan@gmail.com",
-    class: "VIII-A",
-    title: "Wali Santri Ahmad Fauzan (VIII-A)",
-    childName: "Ahmad Fauzan",
-    avatar: "O",
-    initials: "OF",
-  },
-};
-
-const AuthContext = createContext(null);
+function sanitizeStoredUser(raw) {
+  if (!raw || typeof raw !== "object") return DEMO_ACCOUNTS.siswa;
+  if (raw.role === "guru") return DEMO_ACCOUNTS.guru;
+  if (raw.role === "orang-tua") return DEMO_ACCOUNTS.ortu;
+  return DEMO_ACCOUNTS.siswa;
+}
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const saved = localStorage.getItem("al-hikmah-user-session");
-      if (saved) return JSON.parse(saved);
+      if (saved) return sanitizeStoredUser(JSON.parse(saved));
     } catch {
-      // ignore
+      // ignore storage errors
     }
-    return DEMO_ACCOUNTS.guru; // default
+    return DEMO_ACCOUNTS.siswa;
   });
 
   useEffect(() => {
     try {
-      localStorage.setItem("al-hikmah-user-session", JSON.stringify(currentUser));
+      if (currentUser) {
+        localStorage.setItem(
+          "al-hikmah-user-session",
+          JSON.stringify(currentUser)
+        );
+      } else {
+        localStorage.removeItem("al-hikmah-user-session");
+      }
     } catch {
-      // ignore
+      // ignore storage errors
     }
   }, [currentUser]);
 
@@ -60,17 +39,18 @@ export function AuthProvider({ children }) {
     let target = DEMO_ACCOUNTS[roleKey];
     if (!target) {
       if (roleKey === "orang-tua") target = DEMO_ACCOUNTS.ortu;
-      else target = DEMO_ACCOUNTS.guru;
+      else if (roleKey === "guru") target = DEMO_ACCOUNTS.guru;
+      else target = DEMO_ACCOUNTS.siswa;
     }
     setCurrentUser(target);
     return target;
   };
 
   const switchRole = () => {
-    let nextRole = "guru";
-    if (currentUser?.role === "guru") nextRole = "siswa";
-    else if (currentUser?.role === "siswa") nextRole = "orang-tua";
-    else nextRole = "guru";
+    let nextRole;
+    if (currentUser?.role === "siswa") nextRole = "guru";
+    else if (currentUser?.role === "guru") nextRole = "orang-tua";
+    else nextRole = "siswa";
 
     const targetKey = nextRole === "orang-tua" ? "ortu" : nextRole;
     setCurrentUser(DEMO_ACCOUNTS[targetKey]);
@@ -79,7 +59,11 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     setCurrentUser(null);
-    localStorage.removeItem("al-hikmah-user-session");
+    try {
+      localStorage.removeItem("al-hikmah-user-session");
+    } catch {
+      // ignore storage errors
+    }
   };
 
   const isTeacher = currentUser?.role === "guru";
@@ -102,12 +86,4 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
 }

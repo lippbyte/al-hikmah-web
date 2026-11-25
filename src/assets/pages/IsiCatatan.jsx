@@ -1,367 +1,415 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "motion/react";
-import {
-  LuArrowLeft,
-  LuCalendarDays,
-  LuCheck,
-  LuClock,
-  LuMoon,
-  LuBookOpen,
-  LuMessageSquare,
-} from "react-icons/lu";
+import { AnimatePresence, motion } from "motion/react";
 import AppLayout from "../components/AppLayout";
-
-const PRAYERS = [
-  { id: "subuh", name: "Subuh", time: "04:42 WIB", defaultStatus: "sudah" },
-  { id: "dzuhur", name: "Dzuhur", time: "12:05 WIB", defaultStatus: "sudah" },
-  { id: "ashar", name: "Ashar", time: "15:15 WIB", defaultStatus: "sudah" },
-  { id: "maghrib", name: "Maghrib", time: "18:12 WIB", defaultStatus: "belum" },
-  { id: "isya", name: "Isya", time: "19:22 WIB", defaultStatus: "belum" },
-];
+import ProgressRing from "../components/ProgressRing";
+import {
+  ShaumForm,
+  SholatWajibForm,
+  SholatSunnahForm,
+  TadarusForm,
+  InfaqForm,
+  CeramahForm,
+} from "../components/ActivityForms";
+import { useAppData } from "../../context/appDataStore";
+import { useToast } from "../../context/toastStore";
+import { getSurahByNumber } from "../../services/quranService";
+import { page, statusCheck, tapScale } from "../../lib/motion";
+import {
+  IconArrowLeft,
+  IconCalendarDays,
+  IconCheckBold,
+  IconClock,
+  IconBookOpenText,
+  IconChat,
+} from "../../lib/icons";
 
 export default function IsiCatatan() {
   const navigate = useNavigate();
+  const { dailyLog, updateDailyLogSection } = useAppData();
+  const { showToast } = useToast();
 
-  // State: "form" (S-02) or "success" (S-03)
   const [stage, setStage] = useState("form");
-  const [shaumStatus, setShaumStatus] = useState("sudah");
-  const [prayerStatuses, setPrayerStatuses] = useState(
-    PRAYERS.reduce((acc, p) => ({ ...acc, [p.id]: p.defaultStatus }), {})
-  );
-
-  const handlePrayerStatusChange = (id, status) => {
-    setPrayerStatuses((prev) => ({ ...prev, [id]: status }));
-  };
+  const [shaumStatus, setShaumStatus] = useState(dailyLog.shaum);
+  const [prayerStatuses, setPrayerStatuses] = useState(dailyLog.sholatWajib);
+  const [sunnahStatuses, setSunnahStatuses] = useState(dailyLog.sholatSunnah);
+  const [tadarusData, setTadarusData] = useState(dailyLog.tadarus);
+  const [infaqData, setInfaqData] = useState(dailyLog.infaq);
+  const [ceramahData, setCeramahData] = useState(dailyLog.ceramah);
+  const [savedTime, setSavedTime] = useState(dailyLog.updatedAt || "15:20 WIB");
 
   const handleSave = () => {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    const timeStr = `${hours}:${minutes} WIB`;
+
+    updateDailyLogSection(
+      {
+        shaum: shaumStatus,
+        sholatWajib: prayerStatuses,
+        sholatSunnah: sunnahStatuses,
+        tadarus: tadarusData,
+        infaq: infaqData,
+        ceramah: ceramahData,
+      },
+      "Catatan Harian Lengkap"
+    );
+
+    setSavedTime(timeStr);
     setStage("success");
+    showToast("Keenam catatan harian berhasil disimpan.");
   };
 
-  const completedPrayers = Object.values(prayerStatuses).filter((s) => s === "sudah").length;
-  const isShaumCompleted = shaumStatus === "sudah";
-  const totalCompleted = (isShaumCompleted ? 1 : 0) + completedPrayers;
+  const completedPrayers = Object.values(prayerStatuses).filter(
+    (s) => s.status === "sudah"
+  ).length;
+  const sunnahDone = Object.values(sunnahStatuses).some(Boolean);
+  const tadarusDone = Boolean(tadarusData?.surahNumber && tadarusData?.ayatEnd);
+  const infaqDone = Boolean(infaqData?.keterangan?.trim());
+  const ceramahDone = Boolean(ceramahData?.judul?.trim());
+  const shaumDone = shaumStatus === "berpuasa" || shaumStatus === "berhalangan";
+
+  const totalCompleted = [
+    shaumDone,
+    completedPrayers > 0,
+    sunnahDone,
+    tadarusDone,
+    infaqDone,
+    ceramahDone,
+  ].filter(Boolean).length;
   const totalItems = 6;
+  const surahObj = getSurahByNumber(tadarusData?.surahNumber || 2);
 
   return (
     <AppLayout>
-      {/* ===================== MAIN CONTENT WRAPPER ===================== */}
-      <main className="w-full max-w-md md:max-w-3xl lg:max-w-6xl xl:max-w-7xl mx-auto flex-1 flex flex-col px-4 md:px-6 lg:px-8 py-6 pb-12 gap-6">
+      <main className="w-full max-w-[1100px] mx-auto flex-1 flex flex-col px-4 md:px-6 lg:px-8 py-6 pb-12 gap-6">
         <AnimatePresence mode="wait">
           {stage === "form" ? (
-            /* ===================== SECTION S-02: ISI CATATAN HARIAN ===================== */
             <motion.div
               key="form-stage"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25 }}
+              {...page}
               className="flex flex-col gap-6"
             >
-              {/* Header: Back button + Title & Date */}
-              <div className="flex items-center justify-between select-none">
-                <div className="flex items-center gap-3.5">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.92 }}
-                    type="button"
-                    onClick={() => navigate(-1)}
-                    className="w-10 h-10 rounded-xl border border-border bg-bg-surface flex items-center justify-center text-text-main shadow-2xs hover:bg-bg-elevated transition-colors cursor-pointer shrink-0"
-                    aria-label="Kembali"
-                  >
-                    <LuArrowLeft className="text-xl" />
-                  </motion.button>
+              {/* Compact Header */}
+              <header className="flex items-center gap-3.5 select-none">
+                <motion.button
+                  whileTap={tapScale}
+                  type="button"
+                  onClick={() => navigate(-1)}
+                  className="w-12 h-12 rounded-2xl border border-border bg-bg-surface flex items-center justify-center text-text-main shadow-[var(--shadow-card)] hover:bg-bg-elevated transition-colors cursor-pointer shrink-0"
+                  aria-label="Kembali"
+                >
+                  <IconArrowLeft className="text-xl" aria-hidden="true" />
+                </motion.button>
 
-                  <div>
-                    <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-text-main">
-                      Isi Catatan Harian
-                    </h1>
-                    <p className="text-xs md:text-sm text-text-muted font-normal flex items-center gap-1.5 mt-0.5">
-                      <LuCalendarDays className="text-xs shrink-0" />
-                      <span>Senin, 23 Feb 2027 · 16 Ramadan 1448 H</span>
-                    </p>
-                  </div>
+                <div>
+                  <h1 className="font-display text-2xl md:text-3xl font-bold text-text-main leading-tight">
+                    Isi Catatan Harian
+                  </h1>
+                  <p className="text-xs md:text-sm text-text-muted flex items-center gap-1.5 mt-0.5">
+                    <IconCalendarDays className="text-sm shrink-0" aria-hidden="true" />
+                    <span>Selasa, 24 Feb 2027 · 16 Ramadan 1448 H</span>
+                  </p>
                 </div>
-              </div>
+              </header>
 
-              {/* ===================== RESPONSIVE 2-COLUMN GRID ===================== */}
-              <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
-                
-                {/* ================= LEFT MAIN FORM (7/12 & 8/12) ================= */}
-                <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-6">
-                  
-                  {/* 1. SHAUM SECTION */}
-                  <div className="space-y-2.5">
-                    <div className="text-xs font-bold text-text-muted uppercase tracking-wider px-1">
-                      SHAUM
-                    </div>
-
-                    <div className="bg-bg-surface border border-border rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3.5">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="font-bold text-text-main text-sm sm:text-base block">
-                            Shaum Ramadan
-                          </span>
-                          <span className="text-xs text-text-muted">
-                            Puasa wajib hari ke-16
-                          </span>
-                        </div>
-                        <span className="text-xs px-2.5 py-1 rounded-md bg-primary-surface text-primary font-semibold hidden sm:inline">
-                          Wajib
+              {/* 2-Column Layout with 6 Cards */}
+              <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-5">
+                  {/* Card 1: Shaum */}
+                  <section className="bg-bg-surface border border-border rounded-[1.5rem] p-5 shadow-[var(--shadow-card)] space-y-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted block">
+                          1 · Shaum
                         </span>
+                        <h2 className="font-display text-lg font-bold text-text-main">
+                          Shaum Ramadan
+                        </h2>
                       </div>
+                      <span className="text-xs px-3 py-1 rounded-full bg-primary-50 text-primary-700 font-semibold">
+                        Hari ke-16
+                      </span>
+                    </div>
+                    <ShaumForm value={shaumStatus} onChange={setShaumStatus} />
+                  </section>
 
-                      {/* Segmented Toggle Control */}
-                      <div className="bg-bg-elevated/70 p-1.5 rounded-xl border border-border/50 grid grid-cols-3 gap-1">
-                        {["sudah", "belum", "berhalangan"].map((option) => {
-                          const isSelected = shaumStatus === option;
-                          return (
-                            <button
-                              key={option}
-                              type="button"
-                              onClick={() => setShaumStatus(option)}
-                              className={`py-2 px-1 text-xs sm:text-sm font-semibold rounded-lg transition-all cursor-pointer select-none flex items-center justify-center gap-1.5 ${
-                                isSelected
-                                  ? "bg-primary text-white shadow-xs"
-                                  : "text-text-muted hover:text-text-main"
-                              }`}
-                            >
-                              {isSelected && option === "sudah" && (
-                                <LuCheck className="text-xs sm:text-sm font-bold" />
-                              )}
-                              <span className="capitalize">{option}</span>
-                            </button>
-                          );
-                        })}
+                  {/* Card 2: Sholat Wajib (Waktu + Pelaksanaan) */}
+                  <section className="bg-bg-surface border border-border rounded-[1.5rem] p-5 shadow-[var(--shadow-card)] space-y-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted block">
+                          2 · Sholat Wajib
+                        </span>
+                        <h2 className="font-display text-lg font-bold text-text-main">
+                          5 Waktu (Waktu &amp; Pelaksanaan)
+                        </h2>
                       </div>
+                      <span className="text-xs font-semibold text-text-muted">
+                        {completedPrayers}/5 tercatat
+                      </span>
                     </div>
-                  </div>
+                    <SholatWajibForm
+                      prayersValue={prayerStatuses}
+                      onChangePrayers={setPrayerStatuses}
+                      includeSunnahSection={false}
+                    />
+                  </section>
 
-                  {/* 2. SHOLAT WAJIB SECTION */}
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between text-xs font-bold text-text-muted uppercase tracking-wider px-1">
-                      <span>SHOLAT WAJIB</span>
-                      <span className="font-normal normal-case">5 waktu</span>
+                  {/* Card 3: Sholat Sunnah */}
+                  <section className="bg-bg-surface border border-border rounded-[1.5rem] p-5 shadow-[var(--shadow-card)] space-y-4">
+                    <div>
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted block">
+                        3 · Sholat Sunnah
+                      </span>
+                      <h2 className="font-display text-lg font-bold text-text-main">
+                        Tarawih, Dhuha, Qobla &amp; Ba&apos;da
+                      </h2>
                     </div>
+                    <SholatSunnahForm
+                      value={sunnahStatuses}
+                      onChange={setSunnahStatuses}
+                    />
+                  </section>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
-                      {PRAYERS.map((prayer) => {
-                        const currentStatus = prayerStatuses[prayer.id];
-                        return (
-                          <div
-                            key={prayer.id}
-                            className="bg-bg-surface border border-border rounded-2xl p-4 shadow-2xs space-y-3 flex flex-col justify-between"
-                          >
-                            <div className="flex items-center justify-between px-0.5">
-                              <span className="font-bold text-text-main text-sm sm:text-base">
-                                {prayer.name}
-                              </span>
-                              <span className="text-xs text-text-muted">
-                                {prayer.time}
-                              </span>
-                            </div>
-
-                            {/* Segmented Toggle */}
-                            <div className="bg-bg-elevated/70 p-1 rounded-xl border border-border/50 grid grid-cols-3 gap-1">
-                              {["sudah", "belum", "berhalangan"].map((option) => {
-                                const isSelected = currentStatus === option;
-                                return (
-                                  <button
-                                    key={option}
-                                    type="button"
-                                    onClick={() => handlePrayerStatusChange(prayer.id, option)}
-                                    className={`py-1.5 px-1 text-xs font-semibold rounded-lg transition-all cursor-pointer select-none flex items-center justify-center gap-1 ${
-                                      isSelected
-                                        ? "bg-primary text-white shadow-xs"
-                                        : "text-text-muted hover:text-text-main"
-                                    }`}
-                                  >
-                                    {isSelected && option === "sudah" && (
-                                      <LuCheck className="text-xs font-bold" />
-                                    )}
-                                    <span className="capitalize">{option}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })}
+                  {/* Card 4: Tadarus Qur'an */}
+                  <section className="bg-bg-surface border border-border rounded-[1.5rem] p-5 shadow-[var(--shadow-card)] space-y-4">
+                    <div>
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted block">
+                        4 · Tadarus Qur&apos;an
+                      </span>
+                      <h2 className="font-display text-lg font-bold text-text-main">
+                        Pilih Surah, Juz &amp; Ayat
+                      </h2>
                     </div>
-                  </div>
+                    <TadarusForm
+                      value={tadarusData}
+                      onChange={setTadarusData}
+                    />
+                  </section>
 
-                  {/* Footer Reminder & Secondary Submit */}
-                  <div className="pt-2 flex flex-col gap-3">
-                    <p className="text-xs text-center text-text-muted leading-relaxed px-4">
-                      Isilah apa adanya. Terlambat boleh, hanya diberi tanda waktu.
+                  {/* Card 5: Infaq */}
+                  <section className="bg-bg-surface border border-border rounded-[1.5rem] p-5 shadow-[var(--shadow-card)] space-y-4">
+                    <div>
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted block">
+                        5 · Infaq
+                      </span>
+                      <h2 className="font-display text-lg font-bold text-text-main">
+                        Catatan Infaq Harian
+                      </h2>
+                    </div>
+                    <InfaqForm value={infaqData} onChange={setInfaqData} />
+                  </section>
+
+                  {/* Card 6: Ceramah / Kultum */}
+                  <section className="bg-bg-surface border border-border rounded-[1.5rem] p-5 shadow-[var(--shadow-card)] space-y-4">
+                    <div>
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted block">
+                        6 · Ceramah / Kultum
+                      </span>
+                      <h2 className="font-display text-lg font-bold text-text-main">
+                        Ringkasan Ceramah
+                      </h2>
+                    </div>
+                    <CeramahForm
+                      value={ceramahData}
+                      onChange={setCeramahData}
+                    />
+                  </section>
+
+                  {/* Mobile Save Button */}
+                  <div className="pt-1 flex flex-col gap-3.5 lg:hidden">
+                    <p className="text-xs text-center text-text-muted leading-relaxed px-2">
+                      Isilah apa adanya. Catatan terlambat tetap boleh diisi dan
+                      diberi penanda waktu Susulan.
                     </p>
-
                     <motion.button
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.98 }}
+                      whileTap={tapScale}
                       type="button"
                       onClick={handleSave}
-                      className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-sm transition-colors shadow-xs cursor-pointer text-center lg:hidden"
+                      className="w-full min-h-12 px-6 rounded-full bg-primary-600 hover:bg-primary-700 text-on-primary font-semibold text-sm shadow-[var(--shadow-card)] transition-colors cursor-pointer flex items-center justify-center gap-2"
                     >
-                      Simpan Catatan
+                      <IconCheckBold className="text-base" aria-hidden="true" />
+                      <span>Simpan Catatan</span>
                     </motion.button>
                   </div>
                 </div>
 
-                {/* ================= RIGHT STICKY SIDEBAR (DESKTOP) ================= */}
-                <div className="hidden lg:flex lg:col-span-5 xl:col-span-4 flex-col gap-5 sticky top-6">
-                  
-                  {/* Widget 1: Live Completion & Submit CTA */}
-                  <div className="bg-bg-surface border border-border rounded-3xl p-5 shadow-xs flex flex-col gap-4">
-                    <div className="flex items-center justify-between pb-2 border-b border-border/50">
+                {/* Right Sticky Summary (Desktop) */}
+                <aside className="hidden lg:flex lg:col-span-5 xl:col-span-4 flex-col gap-5 sticky top-6">
+                  <div className="bg-bg-surface border border-border rounded-[1.5rem] p-5 shadow-[var(--shadow-card)] flex flex-col gap-4">
+                    <div className="flex items-center justify-between gap-3 pb-3 border-b border-border-subtle">
                       <div>
                         <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">
-                          Ringkasan Hari Ini
+                          Ringkasan 6 Kegiatan
                         </span>
-                        <h3 className="text-base font-bold text-text-main mt-0.5">
-                          {totalCompleted} dari {totalItems} Selesai
+                        <h3 className="font-display text-lg font-bold text-text-main mt-0.5">
+                          {totalCompleted} dari {totalItems} tercatat
                         </h3>
                       </div>
-                      <span className="text-xs font-bold text-primary bg-primary-surface px-2.5 py-1 rounded-md">
-                        {Math.round((totalCompleted / totalItems) * 100)}%
-                      </span>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div className="w-full h-2 rounded-md bg-bg-elevated overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-md transition-all duration-300"
-                        style={{
-                          width: `${(totalCompleted / totalItems) * 100}%`,
-                        }}
+                      <ProgressRing
+                        value={totalCompleted}
+                        total={totalItems}
+                        size={72}
+                        strokeWidth={6}
+                        variant="light"
                       />
                     </div>
 
-                    {/* Status Breakdown Checklist */}
-                    <div className="space-y-2 text-xs">
-                      <div className="flex items-center justify-between py-1 border-b border-border/30">
-                        <span className="text-text-muted">Shaum Ramadan</span>
-                        <span className={`font-semibold capitalize ${shaumStatus === "sudah" ? "text-primary" : "text-text-muted"}`}>
-                          {shaumStatus}
+                    <div className="space-y-2.5 text-xs">
+                      <div className="flex items-center justify-between py-1 border-b border-border-subtle">
+                        <span className="text-text-muted">1. Shaum</span>
+                        <span className="font-semibold text-text-main">
+                          {shaumStatus === "berpuasa"
+                            ? "Berpuasa"
+                            : shaumStatus === "berhalangan"
+                            ? "Berhalangan"
+                            : "Tidak Berpuasa"}
                         </span>
                       </div>
-                      {PRAYERS.map((p) => (
-                        <div key={p.id} className="flex items-center justify-between py-1 border-b border-border/30">
-                          <span className="text-text-muted">{p.name}</span>
-                          <span className={`font-semibold capitalize ${prayerStatuses[p.id] === "sudah" ? "text-primary" : "text-text-muted"}`}>
-                            {prayerStatuses[p.id]}
-                          </span>
-                        </div>
-                      ))}
+                      <div className="flex items-center justify-between py-1 border-b border-border-subtle">
+                        <span className="text-text-muted">2. Sholat Wajib</span>
+                        <span className="font-semibold text-text-main">
+                          {completedPrayers}/5 waktu
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-1 border-b border-border-subtle">
+                        <span className="text-text-muted">3. Sholat Sunnah</span>
+                        <span className="font-semibold text-text-main">
+                          {sunnahDone ? "Sudah dicatat" : "Belum"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-1 border-b border-border-subtle gap-2">
+                        <span className="text-text-muted shrink-0">4. Tadarus</span>
+                        <span className="font-semibold text-text-main truncate">
+                          {surahObj.name} ({tadarusData.ayatStart}–{tadarusData.ayatEnd})
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-1 border-b border-border-subtle">
+                        <span className="text-text-muted">5. Infaq</span>
+                        <span className="font-semibold text-text-main">
+                          {infaqDone ? "Ada keterangan" : "Belum diisi"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-1">
+                        <span className="text-text-muted">6. Ceramah</span>
+                        <span className="font-semibold text-text-main">
+                          {ceramahDone ? "Sudah diisi" : "Belum diisi"}
+                        </span>
+                      </div>
                     </div>
 
-                    {/* Prominent Desktop Action Button */}
                     <motion.button
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.98 }}
+                      whileTap={tapScale}
                       type="button"
                       onClick={handleSave}
-                      className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-sm transition-colors shadow-xs cursor-pointer text-center mt-2 flex items-center justify-center gap-2"
+                      className="w-full min-h-12 px-5 rounded-full bg-primary-600 hover:bg-primary-700 text-on-primary font-semibold text-sm transition-colors shadow-[var(--shadow-card)] cursor-pointer flex items-center justify-center gap-2 mt-1"
                     >
-                      <LuCheck className="text-base" />
+                      <IconCheckBold className="text-base" aria-hidden="true" />
                       <span>Simpan Catatan</span>
                     </motion.button>
                   </div>
 
-                  {/* Widget 2: Adab & Motivasi Kejujuran Amaliyah */}
-                  <div className="bg-accent-surface border border-accent/30 rounded-3xl p-5 shadow-xs flex flex-col gap-2.5">
-                    <div className="flex items-center gap-2 text-xs font-bold text-[#451A03] uppercase tracking-wider">
-                      <LuBookOpen className="text-sm text-accent" />
-                      <span>Adab Mencatat Amaliyah</span>
+                  <div className="bg-accent-50 border border-accent-200 rounded-[1.5rem] p-5 shadow-[var(--shadow-card)] flex flex-col gap-2.5">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-accent-700 uppercase tracking-wider">
+                      <IconBookOpenText
+                        className="text-base text-accent-500"
+                        aria-hidden="true"
+                      />
+                      <span>Adab Mencatat</span>
                     </div>
-                    <p className="text-xs md:text-sm text-[#78350F] font-medium leading-relaxed italic">
-                      "Amalan yang paling dicintai Allah adalah amalan yang kontinu (istiqomah) walaupun sedikit."
+                    <p className="text-sm text-accent-800 leading-relaxed italic">
+                      &ldquo;Amalan yang paling dicintai Allah adalah yang
+                      dikerjakan secara rutin walaupun sedikit.&rdquo;
                     </p>
-                    <span className="text-[11px] text-[#92400E] font-semibold">
-                      (HR. Muslim no. 783)
+                    <span className="text-xs text-accent-600 font-semibold">
+                      HR. Muslim no. 783
                     </span>
                   </div>
 
-                  {/* Widget 3: AI Fikih Shortcut */}
-                  <div className="bg-bg-surface border border-border rounded-3xl p-4 shadow-xs flex items-center justify-between">
+                  <div className="bg-bg-surface border border-border rounded-[1.5rem] p-4 shadow-[var(--shadow-card)] flex items-center justify-between gap-3">
                     <div>
-                      <h4 className="text-xs font-bold text-text-main">Ragu status puasa / sholat?</h4>
-                      <p className="text-[11px] text-text-muted mt-0.5">Tanyakan langsung pada AI</p>
+                      <h4 className="text-xs font-bold text-text-main">
+                        Punya pertanyaan seputar puasa?
+                      </h4>
+                      <p className="text-[11px] text-text-muted mt-0.5">
+                        Cari rujukan awal lalu konfirmasi ke guru atau orang tua.
+                      </p>
                     </div>
-                    <button
+                    <motion.button
+                      whileTap={tapScale}
                       type="button"
                       onClick={() => navigate("/chat")}
-                      className="px-3 py-1.5 rounded-xl bg-primary-surface hover:bg-primary/20 text-primary font-semibold text-xs transition-colors flex items-center gap-1 cursor-pointer"
+                      className="min-h-12 px-4 rounded-full border border-border bg-bg-surface hover:bg-bg-elevated text-text-main font-semibold text-xs transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
                     >
-                      <LuMessageSquare className="text-xs" />
-                      <span>Tanya AI</span>
-                    </button>
+                      <IconChat
+                        className="text-base text-primary-600"
+                        aria-hidden="true"
+                      />
+                      <span>Tanya</span>
+                    </motion.button>
                   </div>
-
-                </div>
+                </aside>
               </div>
             </motion.div>
           ) : (
-            /* ===================== SECTION S-03: KONFIRMASI TERSIMPAN ===================== */
             <motion.div
               key="success-stage"
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ duration: 0.3 }}
-              className="w-full max-w-2xl mx-auto flex-1 flex flex-col justify-between py-6 min-h-[500px]"
+              {...page}
+              className="w-full max-w-xl mx-auto flex-1 flex flex-col justify-between py-6 min-h-[480px] gap-6"
             >
-              {/* Top Header */}
-              <div className="select-none text-left">
-                <h1 className="text-2xl md:text-3xl font-bold text-text-main">
+              <header className="select-none">
+                <h1 className="font-display text-2xl md:text-3xl font-bold text-text-main">
                   Catatan Tersimpan
                 </h1>
-                <p className="text-xs md:text-sm text-text-muted font-normal mt-0.5">
-                  Senin, 23 Feb 2027 · 16 Ramadan 1448 H
+                <p className="text-xs md:text-sm text-text-muted mt-0.5">
+                  Selasa, 24 Feb 2027 · 16 Ramadan 1448 H
                 </p>
-              </div>
+              </header>
 
-              {/* Center Message */}
-              <div className="flex flex-col items-center justify-center my-auto text-center gap-5 py-8">
-                {/* Large Green Check Badge */}
-                <div className="w-20 h-20 rounded-2xl border-2 border-primary bg-primary-surface text-primary flex items-center justify-center text-4xl shadow-sm">
-                  <LuCheck />
-                </div>
+              <div className="bg-bg-surface border border-border rounded-[1.75rem] p-6 sm:p-8 shadow-[var(--shadow-card)] flex flex-col items-center text-center gap-5 my-auto">
+                <motion.div
+                  {...statusCheck}
+                  className="w-20 h-20 rounded-full border-2 border-success-200 bg-success-50 text-success-600 flex items-center justify-center text-4xl"
+                >
+                  <IconCheckBold aria-hidden="true" />
+                </motion.div>
 
-                <div className="space-y-1">
-                  <h2 className="text-xl md:text-2xl font-bold text-text-main max-w-md leading-snug">
-                    Terima kasih, catatan amaliyahmu hari ini sudah tersimpan.
+                <div className="space-y-1.5">
+                  <h2 className="font-display text-xl md:text-2xl font-bold text-text-main leading-snug">
+                    Terima kasih, catatan hari ini sudah tersimpan.
                   </h2>
-                  <p className="text-xs md:text-sm text-text-muted font-normal">
-                    Semoga amal ibadah puasa dan sholat kita diterima Allah SWT.
+                  <p className="text-sm text-text-muted">
+                    Notifikasi pembaruan catatan juga telah dikirim ke akun
+                    Orang Tua (Demo).
                   </p>
                 </div>
 
-                {/* Timestamp Card */}
-                <div className="w-full max-w-sm bg-bg-surface border border-border rounded-xl py-3.5 px-5 flex items-center justify-center gap-2.5 text-xs md:text-sm text-text-main shadow-2xs">
-                  <LuClock className="text-primary text-base" />
-                  <span>Tersimpan pukul 20:15 WIB</span>
+                <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-bg-base border border-border text-xs md:text-sm text-text-main font-medium">
+                  <IconClock
+                    className="text-primary-600 text-base shrink-0"
+                    aria-hidden="true"
+                  />
+                  <span>Tersimpan pukul {savedTime}</span>
                 </div>
               </div>
 
-              {/* Bottom Actions: Kembali ke Hari Ini & Lihat Kalender */}
-              <div className="pt-4 flex flex-col sm:flex-row items-center gap-3 w-full">
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
                 <motion.button
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileTap={tapScale}
                   type="button"
                   onClick={() => navigate("/")}
-                  className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-sm transition-colors shadow-xs cursor-pointer text-center"
+                  className="w-full min-h-12 px-6 rounded-full bg-primary-600 hover:bg-primary-700 text-on-primary font-semibold text-sm transition-colors shadow-[var(--shadow-card)] cursor-pointer"
                 >
                   Kembali ke Hari Ini
                 </motion.button>
 
                 <motion.button
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileTap={tapScale}
                   type="button"
                   onClick={() => navigate("/ramadan")}
-                  className="w-full py-3.5 rounded-xl border border-border bg-bg-surface hover:bg-bg-elevated text-text-main font-semibold text-sm transition-colors shadow-2xs cursor-pointer text-center"
+                  className="w-full min-h-12 px-6 rounded-full border border-border bg-bg-surface hover:bg-bg-elevated text-text-main font-semibold text-sm transition-colors cursor-pointer"
                 >
                   Lihat Kalender Ramadan
                 </motion.button>

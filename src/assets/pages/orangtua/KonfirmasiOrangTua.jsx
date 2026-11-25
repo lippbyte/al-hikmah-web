@@ -1,407 +1,592 @@
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "motion/react";
-import {
-  LuMoon,
-  LuCheck,
-  LuClock,
-  LuCircle,
-  LuArrowLeft,
-  LuShieldCheck,
-  LuSparkles,
-} from "react-icons/lu";
+import { AnimatePresence, motion } from "motion/react";
 import AppLayout from "../../components/AppLayout";
-
-// 7 Days data for Pekan ke-2 Ramadan (H8 to H14) matching Mockup O-01
-const WEEK_DAYS = [
-  { day: 8, label: "H8", date: "15 Feb", status: "terisi" },
-  { day: 9, label: "H9", date: "16 Feb", status: "terisi" },
-  { day: 10, label: "H10", date: "17 Feb", status: "terisi" },
-  { day: 11, label: "H11", date: "18 Feb", status: "susulan" },
-  { day: 12, label: "H12", date: "19 Feb", status: "terisi" },
-  { day: 13, label: "H13", date: "20 Feb", status: "belum" },
-  { day: 14, label: "H14", date: "21 Feb", status: "terisi" },
-];
+import BottomSheet from "../../components/BottomSheet";
+import NotificationBell from "../../components/NotificationBell";
+import RoleSwitchPill from "../../components/RoleSwitchPill";
+import { useAppData } from "../../../context/appDataStore";
+import { useToast } from "../../../context/toastStore";
+import { DEMO_SCHOOL } from "../../../data/demoData";
+import { page, statusCheck, tapScale } from "../../../lib/motion";
+import logoAlHikmah from "../../images/logo-al-hikmah.png";
+import {
+  IconCheckBold,
+  IconClock,
+  IconCircle,
+  IconArrowLeft,
+  IconNotebook,
+  IconSparkleFill,
+  IconBellRinging,
+  IconCalendarDays,
+} from "../../../lib/icons";
 
 export default function KonfirmasiOrangTua() {
-  const { studentId } = useParams();
-  const navigate = useNavigate();
+  const {
+    parentWeekDays,
+    confirmParentDay,
+    kegiatanKhusus,
+    notifications,
+    markNotificationRead,
+  } = useAppData();
+  const { showToast } = useToast();
 
-  // State for Section O-01 vs Section O-02 (Confirmed state)
-  const [isConfirmed, setIsConfirmed] = useState(() => {
-    try {
-      const saved = localStorage.getItem("al-hikmah-ortu-confirmed");
-      return saved === "true";
-    } catch {
-      return false;
-    }
-  });
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [isWeekConfirmed, setIsWeekConfirmed] = useState(false);
+  const [weekConfirmTime, setWeekConfirmTime] = useState(
+    "Sabtu, 21 Februari 2027 · 19.42 WIB"
+  );
 
-  const [confirmTimestamp, setConfirmTimestamp] = useState(() => {
-    try {
-      const savedTime = localStorage.getItem("al-hikmah-ortu-confirm-time");
-      return savedTime || "Sabtu, 21 Februari 2027 · 19.42 WIB";
-    } catch {
-      return "Sabtu, 21 Februari 2027 · 19.42 WIB";
-    }
-  });
+  const parentNotifications = notifications.filter(
+    (n) => n.targetRole === "orang-tua"
+  );
+  const latestUnread = parentNotifications.find((n) => !n.read);
 
-  const handleConfirm = () => {
-    const now = new Date();
-    const days = [
-      "Minggu",
-      "Senin",
-      "Selasa",
-      "Rabu",
-      "Kamis",
-      "Jumat",
-      "Sabtu",
-    ];
-    const months = [
-      "Januari",
-      "Februari",
-      "Maret",
-      "April",
-      "Mei",
-      "Juni",
-      "Juli",
-      "Agustus",
-      "September",
-      "Oktober",
-      "November",
-      "Desember",
-    ];
+  const terisiCount = parentWeekDays.filter((d) => d.status === "terisi").length;
+  const susulanCount = parentWeekDays.filter(
+    (d) => d.status === "susulan"
+  ).length;
+  const confirmedDayCount = parentWeekDays.filter((d) => d.confirmed).length;
 
-    const dayName = days[now.getDay()];
-    const dateNum = now.getDate();
-    const monthName = months[now.getMonth()];
-    const year = now.getFullYear();
-    const hours = String(now.getHours()).padStart(2, "0");
-    const mins = String(now.getMinutes()).padStart(2, "0");
+  const activeDayData = selectedDay
+    ? parentWeekDays.find((d) => d.day === selectedDay)
+    : null;
 
-    const timeStr = `${dayName}, ${dateNum} ${monthName} ${year} · ${hours}.${mins} WIB`;
-    setConfirmTimestamp(timeStr);
-    setIsConfirmed(true);
-
-    try {
-      localStorage.setItem("al-hikmah-ortu-confirmed", "true");
-      localStorage.setItem("al-hikmah-ortu-confirm-time", timeStr);
-    } catch {
-      // ignore
-    }
+  const handleConfirmSingleDay = (dayNum) => {
+    confirmParentDay(dayNum);
+    showToast(`Catatan H${dayNum} dikonfirmasi telah dilihat orang tua.`);
   };
 
-  const handleReset = () => {
-    setIsConfirmed(false);
+  const handleConfirmWeek = () => {
+    const now = new Date();
+    const timeStr = `Hari ini · ${String(now.getHours()).padStart(
+      2,
+      "0"
+    )}.${String(now.getMinutes()).padStart(2, "0")} WIB`;
+    setWeekConfirmTime(timeStr);
+    parentWeekDays.forEach((d) => {
+      if (d.status !== "belum") confirmParentDay(d.day);
+    });
+    setIsWeekConfirmed(true);
+    showToast("Konfirmasi mingguan orang tua tercatat.");
   };
 
   return (
     <AppLayout>
-      <main className="w-full max-w-md md:max-w-3xl lg:max-w-6xl xl:max-w-7xl mx-auto flex-1 flex flex-col px-4 md:px-6 lg:px-8 py-6 pb-20 lg:pb-12 gap-5 md:gap-6 select-none">
-        
-        {/* ===================== TOP BRAND HEADER (VISIBLE ON MOBILE) ===================== */}
-        <div className="flex items-center gap-2.5 lg:hidden">
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center text-lg shadow-2xs">
-            <LuMoon />
+      <main className="w-full max-w-[1100px] mx-auto flex-1 flex flex-col px-4 md:px-6 lg:px-8 py-6 pb-16 lg:pb-12 gap-5 md:gap-6 select-none">
+        {/* Mobile Brand Header + Bell + Role Switch */}
+        <div className="flex items-center justify-between gap-2 lg:hidden">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-bg-surface border border-border overflow-hidden flex items-center justify-center shrink-0 shadow-[var(--shadow-card)]">
+              <img
+                src={logoAlHikmah}
+                alt="Logo Al Hikmah"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <span className="font-display text-lg font-bold text-text-main truncate">
+              Al Hikmah
+            </span>
           </div>
-          <span className="text-base font-bold text-text-main tracking-tight">
-            Al Hikmah
-          </span>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <NotificationBell targetRole="orang-tua" />
+            <RoleSwitchPill />
+          </div>
         </div>
 
-        {/* ===================== SECTION O-01 / O-02 CONTAINER ===================== */}
         <AnimatePresence mode="wait">
-          {!isConfirmed ? (
+          {!isWeekConfirmed ? (
             <motion.div
               key="section-o01"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.25 }}
+              {...page}
               className="w-full flex flex-col gap-5 md:gap-6"
             >
-              {/* Header Greeting */}
-              <div>
-                <span className="text-xs text-text-muted font-medium block">
-                  Portal Konfirmasi Wali Santri
-                </span>
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-text-main leading-tight mt-0.5">
-                  Assalamu'alaikum, Bapak/Ibu
-                </h1>
-                <p className="text-xs md:text-sm text-text-muted font-normal mt-1">
-                  Pantau dan konfirmasi keterlibatan ibadah ananda selama bulan suci Ramadan.
-                </p>
-              </div>
+              {/* Header with Desktop Bell */}
+              <header className="flex items-start justify-between gap-4">
+                <div>
+                  <span className="text-xs text-text-muted font-medium block">
+                    Ringkasan untuk Orang Tua · Data Contoh
+                  </span>
+                  <h1 className="font-display text-2xl sm:text-3xl font-bold text-text-main leading-tight mt-0.5">
+                    Assalamu&apos;alaikum, Bapak/Ibu
+                  </h1>
+                  <p className="text-xs md:text-sm text-text-muted mt-1">
+                    Ketuk setiap tanggal untuk melihat keterangan dan
+                    mengonfirmasi kegiatan ananda.
+                  </p>
+                </div>
 
-              {/* Responsive 2-Column Grid */}
-              <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                
-                {/* ================= LEFT COLUMN: MAIN CONTENT (7/12 & 8/12) ================= */}
-                <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-5">
-                  
-                  {/* CARD 1: NAMA ANAK & RENTANG WAKTU */}
-                  <div className="w-full bg-bg-surface border border-border rounded-2xl md:rounded-3xl p-5 md:p-6 shadow-2xs space-y-4">
-                    <div className="space-y-0.5">
-                      <span className="text-xs text-text-muted font-medium block">
-                        Nama anak
-                      </span>
-                      <h2 className="text-lg md:text-xl font-bold text-text-main leading-snug">
-                        Ahmad Fauzan
-                      </h2>
-                      <p className="text-xs text-text-muted font-normal">
-                        Kelas VIII-A · SMP Al-Hikmah Surabaya
-                      </p>
+                <div className="hidden lg:flex items-center gap-2 shrink-0">
+                  <NotificationBell targetRole="orang-tua" />
+                </div>
+              </header>
+
+              {/* Live Student Activity Notification Banner */}
+              {latestUnread && (
+                <div className="w-full bg-primary-50 border border-primary-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-primary-600 text-on-primary flex items-center justify-center text-lg shrink-0">
+                      <IconBellRinging aria-hidden="true" />
                     </div>
-
-                    <div className="w-full border-t border-border/60 pt-3.5 space-y-0.5">
-                      <span className="text-xs text-text-muted font-medium block">
-                        Rentang yang dikonfirmasi
+                    <div>
+                      <span className="text-xs font-bold text-primary-900 block">
+                        {latestUnread.title}
                       </span>
-                      <h3 className="text-sm md:text-base font-bold text-text-main">
-                        Pekan ke-2 Ramadan
-                      </h3>
-                      <p className="text-xs text-text-muted font-normal">
-                        8 – 14 Ramadan 1448 H / 15 – 21 Feb 2027
+                      <p className="text-xs text-primary-800 mt-0.5 leading-relaxed">
+                        {latestUnread.message}
                       </p>
+                      <span className="text-[11px] text-primary-700 mt-1 block">
+                        {latestUnread.timestamp}
+                      </span>
                     </div>
                   </div>
 
-                  {/* CARD 2: RINGKASAN CATATAN (7 HARI) */}
-                  <div className="w-full bg-bg-surface border border-border rounded-2xl md:rounded-3xl p-5 md:p-6 shadow-2xs space-y-4">
+                  <motion.button
+                    whileTap={tapScale}
+                    type="button"
+                    onClick={() => markNotificationRead(latestUnread.id)}
+                    className="min-h-11 px-4 rounded-full bg-bg-surface border border-primary-200 text-primary-700 hover:bg-bg-base text-xs font-semibold cursor-pointer shrink-0"
+                  >
+                    Tandai dibaca
+                  </motion.button>
+                </div>
+              )}
+
+              <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Main Column */}
+                <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-5">
+                  {/* Child Info Card */}
+                  <section className="w-full bg-bg-surface border border-border rounded-[1.5rem] p-5 md:p-6 shadow-[var(--shadow-card)] space-y-4">
+                    <div className="space-y-0.5">
+                      <span className="text-xs text-text-muted font-medium block">
+                        Nama anak (contoh)
+                      </span>
+                      <h2 className="font-display text-xl font-bold text-text-main">
+                        Rafi Pratama (Demo)
+                      </h2>
+                      <p className="text-xs text-text-muted">
+                        Kelas VIII-A · {DEMO_SCHOOL}
+                      </p>
+                    </div>
+
+                    <div className="w-full border-t border-border-subtle pt-3.5 flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <span className="text-xs text-text-muted font-medium block">
+                          Rentang yang ditinjau
+                        </span>
+                        <h3 className="text-sm md:text-base font-bold text-text-main">
+                          Pekan ke-2 Ramadan (8–14 Ramadan 1448 H)
+                        </h3>
+                      </div>
+                      <span className="text-xs font-semibold px-3 py-1 rounded-full bg-success-50 text-success-700 border border-success-200">
+                        {confirmedDayCount}/{parentWeekDays.length} hari dikonfirmasi
+                      </span>
+                    </div>
+                  </section>
+
+                  {/* Clickable Per-Date Summary Card */}
+                  <section className="w-full bg-bg-surface border border-border rounded-[1.5rem] p-5 md:p-6 shadow-[var(--shadow-card)] space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-sm md:text-base font-bold text-text-main">
-                        Ringkasan catatan
-                      </h3>
+                      <div>
+                        <h3 className="font-display text-base md:text-lg font-bold text-text-main">
+                          Ringkasan catatan per tanggal
+                        </h3>
+                        <p className="text-xs text-text-muted">
+                          Ketuk tanggal untuk melihat keterangan &amp; konfirmasi
+                        </p>
+                      </div>
                       <span className="text-xs text-text-muted font-medium">
                         7 hari
                       </span>
                     </div>
 
-                    {/* 2 Metric Boxes: Hari terisi (5 hari) & Hari susulan (1 hari) */}
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                      <div className="bg-emerald-50/70 border border-emerald-200/90 rounded-2xl p-4 text-left">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-800">
-                          <LuCheck className="text-xs font-bold text-emerald-600" />
+                    <div className="grid grid-cols-2 gap-3.5">
+                      <div className="bg-success-50 border border-success-200 rounded-2xl p-4">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-success-700">
+                          <IconCheckBold className="text-xs" aria-hidden="true" />
                           <span>Hari terisi</span>
                         </div>
-                        <div className="text-2xl sm:text-3xl font-bold text-emerald-700 mt-1 leading-tight">
-                          5 hari
+                        <div className="font-display text-2xl sm:text-3xl font-bold text-success-700 mt-1">
+                          {terisiCount} hari
                         </div>
                       </div>
 
-                      <div className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-4 text-left">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-800">
-                          <LuClock className="text-xs text-amber-600" />
+                      <div className="bg-accent-50 border border-accent-200 rounded-2xl p-4">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-accent-700">
+                          <IconClock className="text-xs" aria-hidden="true" />
                           <span>Hari susulan</span>
                         </div>
-                        <div className="text-2xl sm:text-3xl font-bold text-amber-600 mt-1 leading-tight">
-                          1 hari
+                        <div className="font-display text-2xl sm:text-3xl font-bold text-accent-700 mt-1">
+                          {susulanCount} hari
                         </div>
                       </div>
                     </div>
 
-                    {/* SUB-CARD: CATATAN HARIAN (8-14 RAMADAN) */}
-                    <div className="bg-bg-base/70 border border-border/80 rounded-2xl p-4 space-y-3">
+                    {/* Interactive Clickable 7 Date Buttons */}
+                    <div className="bg-bg-base border border-border-subtle rounded-2xl p-4 space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-text-main block">
-                          Catatan harian (8–14 Ramadan)
+                        <span className="text-xs font-semibold text-text-main">
+                          Catatan harian (ketuk tanggal)
                         </span>
-                        <span className="text-[11px] text-text-muted">
-                          Pekan 2
-                        </span>
+                        <span className="text-xs text-text-muted">Pekan 2</span>
                       </div>
 
-                      {/* 7 Chips Row: H8 to H14 */}
-                      <div className="grid grid-cols-7 gap-1.5 sm:gap-2.5">
-                        {WEEK_DAYS.map((day) => {
+                      <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+                        {parentWeekDays.map((day) => {
                           let chipStyle =
-                            "bg-bg-surface border-border text-text-muted";
-                          let icon = <LuCircle className="text-[10px]" />;
+                            "bg-bg-surface border-border text-text-muted hover:border-primary-300";
+                          let icon = (
+                            <IconCircle className="text-[10px]" aria-hidden="true" />
+                          );
+                          let statusName = "Belum diisi";
 
                           if (day.status === "terisi") {
                             chipStyle =
-                              "bg-emerald-50 border-emerald-300 text-emerald-700 font-bold";
-                            icon = <LuCheck className="text-xs font-bold" />;
+                              "bg-success-50 border-success-200 text-success-700 hover:border-success-600";
+                            icon = (
+                              <IconCheckBold className="text-xs" aria-hidden="true" />
+                            );
+                            statusName = "Terisi";
                           } else if (day.status === "susulan") {
                             chipStyle =
-                              "bg-amber-50 border-amber-300 border-dashed text-amber-700 font-bold";
-                            icon = <LuClock className="text-xs" />;
+                              "bg-accent-50 border-accent-300 border-dashed text-accent-700 hover:border-accent-500";
+                            icon = (
+                              <IconClock className="text-xs" aria-hidden="true" />
+                            );
+                            statusName = "Susulan";
                           }
 
                           return (
-                            <div
+                            <motion.button
                               key={day.day}
-                              className={`h-12 sm:h-14 md:h-16 rounded-xl border flex flex-col items-center justify-center p-1 shadow-2xs ${chipStyle}`}
+                              whileTap={tapScale}
+                              type="button"
+                              onClick={() => setSelectedDay(day.day)}
+                              aria-label={`Lihat rincian ${day.label}, status ${statusName}${
+                                day.confirmed ? ", sudah dikonfirmasi" : ""
+                              }`}
+                              className={`min-h-[62px] rounded-xl border flex flex-col items-center justify-center p-1 cursor-pointer transition-colors relative ${chipStyle} ${
+                                day.confirmed ? "ring-1 ring-primary-400" : ""
+                              }`}
                             >
                               <span className="text-[11px] sm:text-xs font-bold">
                                 {day.label}
                               </span>
-                              <div className="mt-0.5">{icon}</div>
-                            </div>
+                              <span className="mt-1">{icon}</span>
+                              {day.confirmed && (
+                                <span
+                                  className="w-1.5 h-1.5 rounded-full bg-primary-600 mt-1"
+                                  aria-hidden="true"
+                                />
+                              )}
+                            </motion.button>
                           );
                         })}
                       </div>
 
-                      {/* Legend below the 7 chips */}
-                      <div className="flex items-center justify-between text-[11px] sm:text-xs text-text-muted pt-1">
-                        <span className="flex items-center gap-1 font-medium">
-                          <LuCheck className="text-emerald-600 font-bold text-xs" />
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-muted pt-1">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          <IconCheckBold
+                            className="text-success-600 text-xs"
+                            aria-hidden="true"
+                          />
                           <span>Terisi</span>
                         </span>
-                        <span className="flex items-center gap-1 font-medium">
-                          <LuClock className="text-amber-600 text-xs" />
+                        <span className="flex items-center gap-1.5 font-medium">
+                          <IconClock
+                            className="text-accent-600 text-xs"
+                            aria-hidden="true"
+                          />
                           <span>Susulan</span>
                         </span>
-                        <span className="flex items-center gap-1 font-medium">
-                          <LuCircle className="text-text-muted text-[9px]" />
-                          <span>Belum diisi</span>
+                        <span className="flex items-center gap-1.5 font-medium">
+                          <span className="w-2 h-2 rounded-full bg-primary-600" />
+                          <span>Terkonfirmasi</span>
                         </span>
                       </div>
                     </div>
 
-                    {/* Privacy Explanatory Note */}
-                    <p className="text-xs text-text-muted leading-relaxed font-normal">
-                      Ringkasan ini menunjukkan hari anak mencatat amaliyah, tanpa rincian ibadah maupun alasan berhalangan.
+                    <p className="text-xs text-text-muted leading-relaxed">
+                      Ringkasan menampilkan keterisian kegiatan anak tanpa
+                      membuka alasan berhalangan.
                     </p>
-                  </div>
+                  </section>
 
-                  {/* ACTION BUTTON & FOOTER (MOBILE INLINE) */}
+                  {/* Jadwal Kegiatan Khusus Sekolah */}
+                  <section className="w-full bg-bg-surface border border-border rounded-[1.5rem] p-5 md:p-6 shadow-[var(--shadow-card)] space-y-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <IconCalendarDays
+                          className="text-xl text-primary-600"
+                          aria-hidden="true"
+                        />
+                        <h3 className="font-display text-base md:text-lg font-bold text-text-main">
+                          Jadwal Kegiatan Khusus Sekolah
+                        </h3>
+                      </div>
+                      <span className="text-xs text-text-muted font-medium">
+                        {kegiatanKhusus.length} agenda
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                      {kegiatanKhusus.map((item) => {
+                        const done = item.status === "sudah";
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-4 rounded-2xl bg-bg-base border border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+                          >
+                            <div className="min-w-0">
+                              <span className="text-[11px] font-semibold text-accent-700 block">
+                                {item.tag}
+                              </span>
+                              <h4 className="text-sm font-bold text-text-main">
+                                {item.title}
+                              </h4>
+                              <p className="text-xs text-text-muted mt-0.5 leading-relaxed">
+                                {item.description}
+                              </p>
+                            </div>
+
+                            <span
+                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border shrink-0 self-start sm:self-center ${
+                                done
+                                  ? "bg-success-50 text-success-700 border-success-200"
+                                  : "bg-bg-surface text-text-muted border-border"
+                              }`}
+                            >
+                              {done ? (
+                                <IconCheckBold
+                                  className="text-[11px]"
+                                  aria-hidden="true"
+                                />
+                              ) : (
+                                <IconCircle
+                                  className="text-[11px]"
+                                  aria-hidden="true"
+                                />
+                              )}
+                              <span>{done ? "Diikuti" : "Terjadwal"}</span>
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+
+                  {/* Mobile Confirm All CTA */}
                   <div className="flex flex-col gap-2.5 pt-1 lg:hidden">
                     <motion.button
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.98 }}
+                      whileTap={tapScale}
                       type="button"
-                      onClick={handleConfirm}
-                      className="w-full h-12 md:h-14 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs sm:text-sm md:text-base shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+                      onClick={handleConfirmWeek}
+                      className="w-full min-h-12 px-6 rounded-full bg-primary-600 hover:bg-primary-700 text-on-primary font-semibold text-sm shadow-[var(--shadow-card)] transition-colors cursor-pointer flex items-center justify-center gap-2"
                     >
-                      <LuCheck className="text-base md:text-lg font-bold" />
-                      <span>Saya sudah melihat catatan anak saya</span>
+                      <IconCheckBold className="text-base" aria-hidden="true" />
+                      <span>Konfirmasi semua catatan pekan ini</span>
                     </motion.button>
-
-                    <p className="text-[11px] sm:text-xs text-text-muted text-center font-normal">
-                      Konfirmasi tercatat langsung tanpa perlu membuat akun
-                    </p>
                   </div>
-
                 </div>
 
-                {/* ================= RIGHT STICKY SIDEBAR (DESKTOP) ================= */}
-                <div className="hidden lg:flex lg:col-span-5 xl:col-span-4 flex-col gap-5 sticky top-6">
-                  
-                  {/* Action Confirmation Card on Desktop */}
-                  <div className="bg-bg-surface border border-border rounded-3xl p-5 shadow-xs space-y-4">
-                    <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-wider">
-                      <LuShieldCheck className="text-base" />
+                {/* Desktop Right Column */}
+                <aside className="hidden lg:flex lg:col-span-5 xl:col-span-4 flex-col gap-5 sticky top-6">
+                  <div className="bg-bg-surface border border-border rounded-[1.5rem] p-5 shadow-[var(--shadow-card)] space-y-4">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-primary-700 uppercase tracking-wider">
+                      <IconNotebook
+                        className="text-base text-primary-600"
+                        aria-hidden="true"
+                      />
                       <span>Konfirmasi Orang Tua</span>
                     </div>
 
                     <p className="text-xs text-text-muted leading-relaxed">
-                      Dengan mengonfirmasi, Anda menyatakan telah mendampingi dan memeriksa mutaba'ah amaliyah ananda pada pekan ke-2.
+                      Bapak/Ibu dapat mengonfirmasi per tanggal dengan mengklik
+                      kalender di samping, atau menandai seluruh pekan sekaligus.
                     </p>
 
                     <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                      whileTap={tapScale}
                       type="button"
-                      onClick={handleConfirm}
-                      className="w-full py-3.5 px-4 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs md:text-sm shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+                      onClick={handleConfirmWeek}
+                      className="w-full min-h-12 px-5 rounded-full bg-primary-600 hover:bg-primary-700 text-on-primary font-semibold text-sm shadow-[var(--shadow-card)] transition-colors cursor-pointer flex items-center justify-center gap-2"
                     >
-                      <LuCheck className="text-base font-bold" />
-                      <span>Saya sudah melihat catatan</span>
+                      <IconCheckBold className="text-base" aria-hidden="true" />
+                      <span>Konfirmasi Pekan Ini</span>
                     </motion.button>
-
-                    <p className="text-[11px] text-text-muted text-center font-medium">
-                      Konfirmasi tersimpan otomatis di lembar wali kelas
-                    </p>
                   </div>
 
-                  {/* Penjelasan Privasi Fiqih Mutaba'ah */}
-                  <div className="bg-bg-surface border border-border rounded-3xl p-5 shadow-xs space-y-2.5">
-                    <span className="text-xs font-bold text-text-muted uppercase tracking-wider block">
-                      Ketentuan Privasi Catatan
-                    </span>
-                    <p className="text-xs text-text-muted leading-relaxed">
-                      Ringkasan mingguan ini dirancang untuk menunjukkan keaktifan anak tanpa membuka rincian uzur syar'i maupun ibadah pribadi secara spesifik, guna menjaga adab dan kenyamanan ananda.
-                    </p>
-                  </div>
-
-                  {/* Hikmah Ramadan Card */}
-                  <div className="bg-accent-surface border border-accent/30 rounded-3xl p-5 shadow-xs space-y-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-[#451A03] uppercase tracking-wider">
-                      <LuSparkles className="text-sm text-accent" />
-                      <span>Kemitraan Madrasah & Rumah</span>
+                  <div className="bg-accent-50 border border-accent-200 rounded-[1.5rem] p-5 space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-accent-700 uppercase tracking-wider">
+                      <IconSparkleFill
+                        className="text-base text-accent-500"
+                        aria-hidden="true"
+                      />
+                      <span>Pendampingan di Rumah</span>
                     </div>
-                    <p className="text-xs text-[#78350F] leading-relaxed italic">
-                      "Peran teladan orang tua di rumah adalah pilar utama keberkahan ibadah puasa dan sholat anak."
+                    <p className="text-xs text-accent-800 leading-relaxed italic">
+                      &ldquo;Teladan dan sapaan hangat orang tua di rumah
+                      membantu anak menjaga kebiasaan baik sepanjang Ramadan.&rdquo;
                     </p>
                   </div>
-
-                </div>
-
+                </aside>
               </div>
             </motion.div>
           ) : (
-            /* ===================== SECTION O-02: KONFIRMASI BERHASIL ===================== */
             <motion.div
               key="section-o02"
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ duration: 0.25 }}
-              className="w-full flex flex-col items-center justify-center py-6 md:py-12 gap-6"
+              {...page}
+              className="w-full flex flex-col items-center justify-center py-6 md:py-12"
             >
-              {/* Main Success Card (Responsive on Desktop & Mobile 1:1) */}
-              <div className="w-full max-w-lg bg-bg-surface border border-border rounded-3xl p-6 sm:p-8 md:p-10 shadow-sm flex flex-col items-center text-center gap-4">
-                {/* Big Green Circle Check Icon */}
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center text-3xl sm:text-4xl shadow-xs">
-                  <LuCheck className="stroke-[2.5]" />
-                </div>
+              <div className="w-full max-w-lg bg-bg-surface border border-border rounded-[1.75rem] p-6 sm:p-8 md:p-10 shadow-[var(--shadow-card)] flex flex-col items-center text-center gap-5">
+                <motion.div
+                  {...statusCheck}
+                  className="w-20 h-20 rounded-full bg-success-50 border-2 border-success-200 text-success-600 flex items-center justify-center text-4xl"
+                >
+                  <IconCheckBold aria-hidden="true" />
+                </motion.div>
 
                 <div className="space-y-2">
-                  <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-text-main">
+                  <h1 className="font-display text-2xl md:text-3xl font-bold text-text-main">
                     Sudah dilihat orang tua
-                  </h2>
-                  <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-sm mx-auto">
-                    Terima kasih, Bapak/Ibu telah melihat catatan amaliyah{" "}
+                  </h1>
+                  <p className="text-sm text-text-muted leading-relaxed max-w-sm mx-auto">
+                    Terima kasih, Bapak/Ibu telah meninjau ringkasan catatan{" "}
                     <span className="font-semibold text-text-main">
-                      Ahmad Fauzan
+                      Rafi Pratama (Demo)
                     </span>{" "}
                     untuk rentang 8 – 14 Ramadan 1448 H.
                   </p>
                 </div>
 
-                {/* Timestamp Card */}
-                <div className="w-full bg-bg-base/70 border border-border/80 rounded-2xl p-4 space-y-1 mt-2">
-                  <span className="text-[11px] text-text-muted font-medium block">
+                <div className="w-full bg-bg-base border border-border-subtle rounded-2xl p-4 space-y-1">
+                  <span className="text-xs text-text-muted font-medium block">
                     Waktu konfirmasi tercatat
                   </span>
-                  <div className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-text-main">
-                    <LuClock className="text-primary text-sm shrink-0" />
-                    <span>{confirmTimestamp}</span>
+                  <div className="inline-flex items-center gap-2 text-sm font-bold text-text-main">
+                    <IconClock
+                      className="text-primary-600 text-base shrink-0"
+                      aria-hidden="true"
+                    />
+                    <span>{weekConfirmTime}</span>
                   </div>
                 </div>
 
-                {/* Info Note & Return Button */}
-                <div className="w-full pt-4 space-y-3">
+                <div className="w-full pt-2 space-y-3">
                   <p className="text-xs text-text-muted">
-                    Bapak/Ibu dapat menutup halaman ini dengan aman.
+                    Bapak/Ibu dapat menutup halaman ini.
                   </p>
 
-                  <button
+                  <motion.button
+                    whileTap={tapScale}
                     type="button"
-                    onClick={handleReset}
-                    className="w-full h-12 rounded-xl bg-bg-surface hover:bg-bg-elevated border border-border text-text-main font-semibold text-xs sm:text-sm shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-2"
+                    onClick={() => setIsWeekConfirmed(false)}
+                    className="w-full min-h-12 px-6 rounded-full border border-border bg-bg-surface hover:bg-bg-elevated text-text-main font-semibold text-sm transition-colors cursor-pointer flex items-center justify-center gap-2"
                   >
-                    <LuArrowLeft className="text-base" />
+                    <IconArrowLeft className="text-base" aria-hidden="true" />
                     <span>Kembali lihat ringkasan</span>
-                  </button>
+                  </motion.button>
                 </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-
       </main>
+
+      {/* Per-Date Detail & Confirmation Popup */}
+      <BottomSheet
+        isOpen={Boolean(activeDayData)}
+        onClose={() => setSelectedDay(null)}
+        title={activeDayData ? `Rincian ${activeDayData.label}` : ""}
+        subtitle={activeDayData?.fullDate || ""}
+        maxWidthClass="sm:max-w-lg"
+      >
+        {activeDayData && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-border-subtle">
+              <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                Status Catatan
+              </span>
+              {activeDayData.status === "terisi" ? (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-success-50 text-success-700 border border-success-200">
+                  <IconCheckBold className="text-xs" aria-hidden="true" />
+                  <span>Terisi</span>
+                </span>
+              ) : activeDayData.status === "susulan" ? (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-accent-50 text-accent-700 border border-accent-200">
+                  <IconClock className="text-xs" aria-hidden="true" />
+                  <span>Catatan Susulan</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-bg-elevated text-text-muted border border-border">
+                  <IconCircle className="text-xs" aria-hidden="true" />
+                  <span>Belum diisi</span>
+                </span>
+              )}
+            </div>
+
+            <dl className="divide-y divide-border-subtle text-xs sm:text-sm">
+              <div className="py-2.5 flex items-start justify-between gap-4">
+                <dt className="text-text-muted shrink-0">Shaum</dt>
+                <dd className="font-semibold text-text-main text-right">
+                  {activeDayData.summary.shaum}
+                </dd>
+              </div>
+              <div className="py-2.5 flex items-start justify-between gap-4">
+                <dt className="text-text-muted shrink-0">Sholat Wajib</dt>
+                <dd className="font-semibold text-text-main text-right">
+                  {activeDayData.summary.sholatWajib}
+                </dd>
+              </div>
+              <div className="py-2.5 flex items-start justify-between gap-4">
+                <dt className="text-text-muted shrink-0">Sholat Sunnah</dt>
+                <dd className="font-semibold text-text-main text-right">
+                  {activeDayData.summary.sholatSunnah}
+                </dd>
+              </div>
+              <div className="py-2.5 flex items-start justify-between gap-4">
+                <dt className="text-text-muted shrink-0">Tadarus Qur&apos;an</dt>
+                <dd className="font-semibold text-text-main text-right">
+                  {activeDayData.summary.tadarus}
+                </dd>
+              </div>
+              <div className="py-2.5 flex items-start justify-between gap-4">
+                <dt className="text-text-muted shrink-0">Keterangan Infaq</dt>
+                <dd className="font-medium text-text-main text-right">
+                  {activeDayData.summary.infaq}
+                </dd>
+              </div>
+              <div className="py-2.5 flex items-start justify-between gap-4">
+                <dt className="text-text-muted shrink-0">Ceramah / Kultum</dt>
+                <dd className="font-medium text-text-main text-right">
+                  {activeDayData.summary.ceramah}
+                </dd>
+              </div>
+            </dl>
+
+            <div className="pt-3 border-t border-border-subtle">
+              {activeDayData.confirmed ? (
+                <div className="w-full p-3.5 rounded-2xl bg-success-50 border border-success-200 text-success-800 text-xs font-semibold flex items-center justify-center gap-2">
+                  <IconCheckBold className="text-sm" aria-hidden="true" />
+                  <span>
+                    Sudah dikonfirmasi orang tua ({activeDayData.confirmedAt})
+                  </span>
+                </div>
+              ) : (
+                <motion.button
+                  whileTap={tapScale}
+                  type="button"
+                  onClick={() => handleConfirmSingleDay(activeDayData.day)}
+                  className="w-full min-h-12 px-5 rounded-full bg-primary-600 hover:bg-primary-700 text-on-primary text-sm font-semibold shadow-[var(--shadow-card)] transition-colors cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <IconCheckBold className="text-base" aria-hidden="true" />
+                  <span>Saya sudah melihat catatan {activeDayData.label}</span>
+                </motion.button>
+              )}
+            </div>
+          </div>
+        )}
+      </BottomSheet>
     </AppLayout>
   );
 }

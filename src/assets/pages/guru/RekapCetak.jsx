@@ -1,18 +1,17 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "motion/react";
-import {
-  LuPrinter,
-  LuChevronDown,
-  LuCheck,
-  LuFileText,
-  LuX,
-  LuSparkles,
-  LuShieldCheck,
-} from "react-icons/lu";
+import { motion } from "motion/react";
 import AppLayout from "../../components/AppLayout";
-import TeacherBottomNav from "../../components/TeacherBottomNav";
-import { INITIAL_STUDENTS } from "./KelasSaya";
+import BottomSheet from "../../components/BottomSheet";
+import { DEMO_SCHOOL, INITIAL_STUDENTS } from "../../../data/demoData";
+import { listItem, tapScale } from "../../../lib/motion";
+import {
+  IconPrinter,
+  IconChevronDown,
+  IconCheckBold,
+  IconCircle,
+  IconSparkleFill,
+} from "../../../lib/icons";
 
 export default function RekapCetak() {
   const navigate = useNavigate();
@@ -26,329 +25,324 @@ export default function RekapCetak() {
 
   return (
     <AppLayout>
-      <main className="w-full max-w-md md:max-w-3xl lg:max-w-6xl xl:max-w-7xl mx-auto flex-1 flex flex-col px-4 md:px-6 lg:px-8 py-6 pb-28 lg:pb-12 gap-5 md:gap-6 select-none">
-        
-        {/* ===================== TOP HEADER (G-04 MOCKUP) ===================== */}
+      <main className="w-full max-w-[1100px] mx-auto flex-1 flex flex-col px-4 md:px-6 lg:px-8 py-6 pb-28 lg:pb-12 gap-5 md:gap-6 select-none">
         <header>
-          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-text-main leading-tight">
-            Rekap & Cetak
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-text-main leading-tight">
+            Rekap &amp; Cetak
           </h1>
-          <p className="text-xs md:text-sm text-text-muted font-normal mt-0.5">
-            Ringkasan otomatis pencatatan kelas
+          <p className="text-xs md:text-sm text-text-muted mt-0.5">
+            Ringkasan pencatatan kelas · Data Contoh
           </p>
         </header>
 
-        {/* ===================== RESPONSIVE 2-COLUMN LAYOUT ===================== */}
         <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
-          {/* ================= LEFT MAIN COLUMN: FILTERS & STUDENT LIST ================= */}
+          {/* Primary Column */}
           <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-4">
-            
-            {/* Filter Dropdowns */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Class Select */}
-              <div className="relative">
-                <select
-                  value={selectedClass}
-                  onChange={(e) => setSelectedClass(e.target.value)}
-                  className="w-full appearance-none bg-bg-surface border border-border rounded-xl px-4 py-2.5 text-xs md:text-sm font-semibold text-text-main shadow-2xs focus:outline-none focus:border-primary cursor-pointer"
+            {/* Filters with labels above controls */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="rekap-kelas"
+                  className="text-xs font-semibold text-text-muted block"
                 >
-                  <option value="Kelas VIII-A">Kelas VIII-A</option>
-                  <option value="Kelas VIII-B">Kelas VIII-B</option>
-                  <option value="Kelas IX-A">Kelas IX-A</option>
-                </select>
-                <LuChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none text-base" />
+                  Pilih Kelas
+                </label>
+                <div className="relative">
+                  <select
+                    id="rekap-kelas"
+                    value={selectedClass}
+                    onChange={(e) => setSelectedClass(e.target.value)}
+                    className="w-full min-h-12 appearance-none bg-bg-surface border border-border rounded-2xl px-4 pr-10 text-sm font-semibold text-text-main shadow-[var(--shadow-card)] focus:border-primary-600 cursor-pointer"
+                  >
+                    <option value="Kelas VIII-A">Kelas VIII-A</option>
+                    <option value="Kelas VIII-B">Kelas VIII-B</option>
+                    <option value="Kelas IX-A">Kelas IX-A</option>
+                  </select>
+                  <IconChevronDown
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none text-base"
+                    aria-hidden="true"
+                  />
+                </div>
               </div>
 
-              {/* Period Select */}
-              <div className="relative">
-                <select
-                  value={selectedPeriod}
-                  onChange={(e) => setSelectedPeriod(e.target.value)}
-                  className="w-full appearance-none bg-bg-surface border border-border rounded-xl px-4 py-2.5 text-xs md:text-sm font-semibold text-text-main shadow-2xs focus:outline-none focus:border-primary cursor-pointer"
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="rekap-periode"
+                  className="text-xs font-semibold text-text-muted block"
                 >
-                  <option value="1 – 14 Ramadan 1448 H">1 – 14 Ramadan 1448 H</option>
-                  <option value="15 – 30 Ramadan 1448 H">15 – 30 Ramadan 1448 H</option>
-                  <option value="1 Bulan Penuh">1 Bulan Penuh (1–30 Ramadan)</option>
-                </select>
-                <LuChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none text-base" />
+                  Periode Catatan
+                </label>
+                <div className="relative">
+                  <select
+                    id="rekap-periode"
+                    value={selectedPeriod}
+                    onChange={(e) => setSelectedPeriod(e.target.value)}
+                    className="w-full min-h-12 appearance-none bg-bg-surface border border-border rounded-2xl px-4 pr-10 text-sm font-semibold text-text-main shadow-[var(--shadow-card)] focus:border-primary-600 cursor-pointer"
+                  >
+                    <option value="1 – 14 Ramadan 1448 H">
+                      1 – 14 Ramadan 1448 H
+                    </option>
+                    <option value="15 – 30 Ramadan 1448 H">
+                      15 – 30 Ramadan 1448 H
+                    </option>
+                    <option value="1 – 30 Ramadan 1448 H">
+                      1 Bulan Penuh (1–30 Ramadan)
+                    </option>
+                  </select>
+                  <IconChevronDown
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none text-base"
+                    aria-hidden="true"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* CLASS SUMMARY BOX (G-04 MOCKUP) */}
-            <div className="w-full bg-emerald-50/70 border border-emerald-300 rounded-2xl md:rounded-3xl p-4 md:p-5 shadow-2xs space-y-1.5">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm md:text-base font-bold text-emerald-950">
+            {/* Class Summary Card */}
+            <div className="w-full bg-primary-50 border border-primary-200 rounded-[1.5rem] p-5 space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="font-display text-base md:text-lg font-bold text-primary-900">
                   Ringkasan {selectedClass}
                 </h2>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-white text-emerald-700 border border-emerald-300">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-bg-surface text-primary-700 border border-primary-200">
                   32 siswa
                 </span>
               </div>
-              <p className="text-xs md:text-sm text-emerald-900 font-medium">
-                27 dari 32 catatan sudah dilihat orang tua.
+              <p className="text-xs md:text-sm text-primary-800">
+                27 dari 32 catatan sudah dilihat oleh orang tua.
               </p>
             </div>
 
-            {/* STUDENT REKAP CARDS */}
-            <div className="flex flex-col gap-2.5">
+            {/* Student Cards */}
+            <div className="flex flex-col gap-3">
               {INITIAL_STUDENTS.map((student, idx) => (
-                <motion.div
+                <motion.button
                   key={student.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, delay: idx * 0.03 }}
-                  whileHover={{ y: -1 }}
+                  custom={idx}
+                  variants={listItem}
+                  initial="initial"
+                  animate="animate"
+                  whileTap={tapScale}
+                  type="button"
                   onClick={() => navigate(`/guru/siswa/${student.id}`)}
-                  className="bg-bg-surface border border-border hover:border-primary/50 rounded-2xl p-4 shadow-2xs flex items-center justify-between cursor-pointer transition-all"
+                  className="w-full text-left bg-bg-surface border border-border hover:border-primary-300 rounded-2xl p-4 min-h-[72px] shadow-[var(--shadow-card)] flex items-center justify-between gap-3 cursor-pointer transition-colors"
                 >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-sm md:text-base font-bold text-text-main">
-                        {student.name}
-                      </h3>
-                    </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm md:text-base font-bold text-text-main truncate">
+                      {student.name}
+                    </h3>
                     <p className="text-xs text-text-muted mt-1">
                       Terisi: {student.daysFilled} · Susulan: {student.missedCount}
                     </p>
                   </div>
 
-                  {/* Parent status on right */}
-                  <div className="text-right shrink-0 ml-2">
+                  <div className="shrink-0">
                     {student.parentViewed ? (
-                      <span className="text-xs font-semibold text-emerald-600 block">
-                        Sudah dilihat orang tua
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-success-50 text-success-700 border border-success-200">
+                        <IconCheckBold className="text-xs" aria-hidden="true" />
+                        <span>Dilihat wali</span>
                       </span>
                     ) : (
-                      <span className="text-xs font-medium text-text-muted block">
-                        Belum dilihat orang tua
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-bg-elevated text-text-muted border border-border">
+                        <IconCircle className="text-xs" aria-hidden="true" />
+                        <span>Belum dilihat</span>
                       </span>
                     )}
                   </div>
-                </motion.div>
+                </motion.button>
               ))}
             </div>
 
-            {/* Action Button on Mobile */}
+            {/* Mobile Print CTA */}
             <div className="pt-2 lg:hidden">
               <motion.button
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
+                whileTap={tapScale}
                 type="button"
                 onClick={() => setIsPrintModalOpen(true)}
-                className="w-full h-12 md:h-14 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-sm md:text-base shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="w-full min-h-12 px-6 rounded-full bg-primary-600 hover:bg-primary-700 text-on-primary font-semibold text-sm shadow-[var(--shadow-card)] transition-colors cursor-pointer flex items-center justify-center gap-2"
               >
-                <LuPrinter className="text-lg font-bold" />
+                <IconPrinter className="text-lg" aria-hidden="true" />
                 <span>Cetak Rekap (Versi A4)</span>
               </motion.button>
             </div>
-
           </div>
 
-          {/* ================= RIGHT STICKY SIDEBAR (DESKTOP) ================= */}
-          <div className="hidden lg:flex lg:col-span-5 xl:col-span-4 flex-col gap-5 sticky top-6">
-            
-            {/* Quick Print Action Card on Desktop */}
-            <div className="bg-bg-surface border border-border rounded-3xl p-5 shadow-xs space-y-4">
-              <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-wider">
-                <LuPrinter className="text-base" />
-                <span>Cetak Lembar Rekap A4</span>
+          {/* Desktop Sidebar */}
+          <aside className="hidden lg:flex lg:col-span-5 xl:col-span-4 flex-col gap-5 sticky top-6">
+            <div className="bg-bg-surface border border-border rounded-[1.5rem] p-5 shadow-[var(--shadow-card)] space-y-4">
+              <div className="flex items-center gap-2 text-xs font-semibold text-primary-700 uppercase tracking-wider">
+                <IconPrinter className="text-base text-primary-600" aria-hidden="true" />
+                <span>Cetak Lembar A4</span>
               </div>
 
               <p className="text-xs text-text-muted leading-relaxed">
-                Dokumen resmi rekapitulasi mutaba'ah amaliyah Ramadan siswa siap cetak dengan kop sekolah dan lembar pengesahan.
+                Lembar ringkasan pencatatan Ramadan kelas siap cetak untuk arsip
+                pendampingan wali kelas.
               </p>
 
               <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileTap={tapScale}
                 type="button"
                 onClick={() => setIsPrintModalOpen(true)}
-                className="w-full py-3.5 px-4 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold text-xs md:text-sm shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="w-full min-h-12 px-5 rounded-full bg-primary-600 hover:bg-primary-700 text-on-primary font-semibold text-sm shadow-[var(--shadow-card)] transition-colors cursor-pointer flex items-center justify-center gap-2"
               >
-                <LuPrinter className="text-base font-bold" />
-                <span>Pratinjau & Cetak A4</span>
+                <IconPrinter className="text-base" aria-hidden="true" />
+                <span>Pratinjau &amp; Cetak A4</span>
               </motion.button>
             </div>
 
-            {/* Statistik Tinjauan Wali Santri */}
-            <div className="bg-bg-surface border border-border rounded-3xl p-5 shadow-xs space-y-3">
-              <span className="text-xs font-bold text-text-muted uppercase tracking-wider block">
-                Statistik Tinjauan Wali
+            <div className="bg-bg-surface border border-border rounded-[1.5rem] p-5 shadow-[var(--shadow-card)] space-y-3.5">
+              <span className="text-xs font-semibold text-text-muted uppercase tracking-wider block">
+                Ringkasan Tinjauan Wali
               </span>
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-text-muted">Sudah Melihat:</span>
-                  <span className="font-bold text-emerald-700">27 Siswa (84%)</span>
+                  <span className="text-text-muted">Sudah Melihat</span>
+                  <span className="font-bold text-success-700">27 Siswa (84%)</span>
                 </div>
-                <div className="w-full h-2 rounded-md bg-bg-elevated overflow-hidden">
+                <div className="w-full h-2 rounded-full bg-bg-elevated overflow-hidden">
                   <div
-                    className="h-full bg-emerald-600 rounded-md"
+                    className="h-full bg-success-600 rounded-full"
                     style={{ width: "84%" }}
                   />
                 </div>
               </div>
 
-              <div className="space-y-1.5 pt-1">
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-text-muted">Belum Melihat:</span>
-                  <span className="font-bold text-text-muted">5 Siswa (16%)</span>
+                  <span className="text-text-muted">Belum Melihat</span>
+                  <span className="font-bold text-accent-700">5 Siswa (16%)</span>
                 </div>
-                <div className="w-full h-2 rounded-md bg-bg-elevated overflow-hidden">
+                <div className="w-full h-2 rounded-full bg-bg-elevated overflow-hidden">
                   <div
-                    className="h-full bg-amber-500 rounded-md"
+                    className="h-full bg-accent-500 rounded-full"
                     style={{ width: "16%" }}
                   />
                 </div>
               </div>
-
-              <p className="text-[11px] text-text-muted leading-relaxed pt-1">
-                Siswa yang belum dilihat orang tua dapat dikirimkan pengingat melalui fitur komunikasi kelas.
-              </p>
             </div>
 
-            {/* Panduan Pengarsipan */}
-            <div className="bg-accent-surface border border-accent/30 rounded-3xl p-5 shadow-xs space-y-2">
-              <div className="flex items-center gap-2 text-xs font-bold text-[#451A03] uppercase tracking-wider">
-                <LuSparkles className="text-sm text-accent" />
-                <span>Ketentuan Pelaporan</span>
+            <div className="bg-accent-50 border border-accent-200 rounded-[1.5rem] p-5 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-accent-700 uppercase tracking-wider">
+                <IconSparkleFill
+                  className="text-base text-accent-500"
+                  aria-hidden="true"
+                />
+                <span>Catatan Pelaporan</span>
               </div>
-              <p className="text-xs text-[#78350F] leading-relaxed">
-                Hasil rekapitulasi mutaba'ah per periode ditandatangani oleh wali kelas dan dilaporkan ke bagian kesiswaan untuk pengisian rapor karakter PAI.
+              <p className="text-xs text-accent-800 leading-relaxed">
+                Rekap mencatat konsistensi pengisian, bukan perbandingan nilai
+                ibadah antar siswa.
               </p>
             </div>
-
-          </div>
-
+          </aside>
         </div>
-
       </main>
 
-      {/* ===================== A4 PRINT PREVIEW MODAL ===================== */}
-      <AnimatePresence>
-        {isPrintModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsPrintModalOpen(false)}
-              className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
-            />
+      {/* Draggable BottomSheet / Modal for A4 Print Preview */}
+      <BottomSheet
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        title="Pratinjau Lembar Rekap (A4)"
+        subtitle="Contoh dokumen ringkasan pencatatan kelas untuk arsip sekolah."
+        maxWidthClass="sm:max-w-2xl"
+      >
+        <div className="space-y-5">
+          <div className="border border-border rounded-2xl p-5 bg-bg-base/60 space-y-4 text-xs">
+            <div className="text-center pb-3 border-b-2 border-primary-600 space-y-1">
+              <h3 className="font-display font-bold text-base text-text-main uppercase tracking-wide">
+                {DEMO_SCHOOL}
+              </h3>
+              <p className="text-xs text-text-muted">
+                Rekapitulasi Catatan Ramadan 1448 H · Periode {selectedPeriod}
+              </p>
+              <p className="text-xs font-semibold text-text-main">
+                {selectedClass} · Wali Kelas (Demo)
+              </p>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-full max-w-2xl bg-white border border-border rounded-3xl shadow-2xl p-6 sm:p-8 relative z-10 max-h-[90vh] overflow-y-auto space-y-5"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-border">
-                <div>
-                  <h3 className="text-lg font-bold text-text-main">
-                    Pratinjau Lembar Rekap Mutaba'ah (A4)
-                  </h3>
-                  <p className="text-xs text-text-muted mt-0.5">
-                    Format resmi laporan hasil amaliyah Ramadan untuk arsip sekolah
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsPrintModalOpen(false)}
-                  className="p-1.5 text-text-muted hover:text-text-main rounded-lg cursor-pointer"
-                >
-                  <LuX className="text-xl" />
-                </button>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-border bg-primary-50 text-primary-900">
+                    <th className="py-2 px-2 font-semibold">No</th>
+                    <th className="py-2 px-2 font-semibold">Nama Siswa</th>
+                    <th className="py-2 px-2 font-semibold text-center">Terisi</th>
+                    <th className="py-2 px-2 font-semibold text-center">Susulan</th>
+                    <th className="py-2 px-2 font-semibold">Ritme</th>
+                    <th className="py-2 px-2 font-semibold">Tinjauan Wali</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-subtle">
+                  {INITIAL_STUDENTS.map((s, i) => (
+                    <tr key={s.id}>
+                      <td className="py-2 px-2 text-text-muted">{i + 1}</td>
+                      <td className="py-2 px-2 font-semibold text-text-main">
+                        {s.name}
+                      </td>
+                      <td className="py-2 px-2 text-center text-text-muted">
+                        {s.daysFilled}
+                      </td>
+                      <td className="py-2 px-2 text-center text-text-muted">
+                        {s.missedCount}
+                      </td>
+                      <td className="py-2 px-2 text-primary-700 font-medium">
+                        {s.consistencyLabel}
+                      </td>
+                      <td className="py-2 px-2 text-text-muted">
+                        {s.parentViewed ? "Sudah dilihat" : "Belum"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="grid grid-cols-2 pt-5 text-center text-xs text-text-muted gap-4">
+              <div>
+                <p>Mengetahui,</p>
+                <p className="font-semibold text-text-main mt-1">
+                  Kepala Sekolah (Contoh)
+                </p>
+                <div className="h-10" />
+                <p className="font-bold text-text-main underline">
+                  Nama Kepala Sekolah (Demo)
+                </p>
               </div>
-
-              {/* Document Sheet Simulation */}
-              <div className="border border-border/80 rounded-2xl p-6 bg-slate-50/50 space-y-4 text-xs font-sans">
-                {/* School Letterhead */}
-                <div className="text-center pb-3 border-b-2 border-emerald-700 space-y-1">
-                  <h4 className="font-bold text-sm text-text-main tracking-wider uppercase">
-                    SMP Al-Hikmah Surabaya
-                  </h4>
-                  <p className="text-[11px] text-text-muted">
-                    Rekapitulasi Mutaba'ah Amaliyah Ramadan 1448 H · Periode {selectedPeriod}
-                  </p>
-                  <p className="text-[11px] font-semibold text-text-main">
-                    Kelas: {selectedClass} · Wali Kelas: Ustadz Rakan Shaka, S.Pd.I
-                  </p>
-                </div>
-
-                {/* Table */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-[11px]">
-                    <thead>
-                      <tr className="border-b border-border bg-emerald-50 text-emerald-900">
-                        <th className="py-2 px-2 font-bold">No</th>
-                        <th className="py-2 px-2 font-bold">Nama Siswa</th>
-                        <th className="py-2 px-2 font-bold text-center">Terisi</th>
-                        <th className="py-2 px-2 font-bold text-center">Susulan</th>
-                        <th className="py-2 px-2 font-bold">Konsistensi</th>
-                        <th className="py-2 px-2 font-bold">Status Wali Santri</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/60">
-                      {INITIAL_STUDENTS.map((s, i) => (
-                        <tr key={s.id} className="hover:bg-white">
-                          <td className="py-2 px-2 text-text-muted">{i + 1}</td>
-                          <td className="py-2 px-2 font-semibold text-text-main">{s.name}</td>
-                          <td className="py-2 px-2 text-center text-text-muted">{s.daysFilled}</td>
-                          <td className="py-2 px-2 text-center text-text-muted">{s.missedCount}</td>
-                          <td className="py-2 px-2 text-emerald-700 font-medium">{s.consistencyLabel}</td>
-                          <td className="py-2 px-2 text-text-muted">
-                            {s.parentViewed ? "Terverifikasi" : "Belum"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Signatures */}
-                <div className="grid grid-cols-2 pt-6 text-center text-[11px] text-text-muted">
-                  <div>
-                    <p>Mengetahui,</p>
-                    <p className="font-semibold text-text-main mt-1">Kepala Sekolah SMP Al-Hikmah</p>
-                    <div className="h-12" />
-                    <p className="font-bold text-text-main underline">Drs. H. Ahmad Masrur, M.Pd.</p>
-                  </div>
-                  <div>
-                    <p>Surabaya, 14 Ramadan 1448 H</p>
-                    <p className="font-semibold text-text-main mt-1">Wali Kelas {selectedClass}</p>
-                    <div className="h-12" />
-                    <p className="font-bold text-text-main underline">Ustadz Rakan Shaka, S.Pd.I</p>
-                  </div>
-                </div>
+              <div>
+                <p>Kota Contoh, 14 Ramadan 1448 H</p>
+                <p className="font-semibold text-text-main mt-1">
+                  Wali {selectedClass}
+                </p>
+                <div className="h-10" />
+                <p className="font-bold text-text-main underline">
+                  Guru Wali Kelas (Demo)
+                </p>
               </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsPrintModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl bg-bg-elevated text-text-main text-xs font-semibold hover:bg-border transition-colors cursor-pointer"
-                >
-                  Tutup
-                </button>
-                <button
-                  type="button"
-                  onClick={handlePrint}
-                  className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
-                >
-                  <LuPrinter className="text-sm font-bold" />
-                  <span>Cetak Dokumen Sekarang</span>
-                </button>
-              </div>
-            </motion.div>
+            </div>
           </div>
-        )}
-      </AnimatePresence>
 
-      {/* Floating Bottom Nav for Mobile */}
-      <TeacherBottomNav activeTab="rekap" />
+          <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3">
+            <motion.button
+              whileTap={tapScale}
+              type="button"
+              onClick={() => setIsPrintModalOpen(false)}
+              className="w-full sm:w-auto min-h-12 px-6 rounded-full border border-border bg-bg-surface hover:bg-bg-elevated text-text-main text-sm font-semibold transition-colors cursor-pointer"
+            >
+              Tutup
+            </motion.button>
+            <motion.button
+              whileTap={tapScale}
+              type="button"
+              onClick={handlePrint}
+              className="w-full sm:w-auto min-h-12 px-6 rounded-full bg-primary-600 hover:bg-primary-700 text-on-primary text-sm font-semibold shadow-[var(--shadow-card)] flex items-center justify-center gap-2 cursor-pointer transition-colors"
+            >
+              <IconPrinter className="text-base" aria-hidden="true" />
+              <span>Cetak Dokumen</span>
+            </motion.button>
+          </div>
+        </div>
+      </BottomSheet>
     </AppLayout>
   );
 }

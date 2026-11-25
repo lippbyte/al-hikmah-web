@@ -1,71 +1,80 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import ChatHeader from "../components/AIChat/ChatHeader";
 import Sidebar from "../components/AIChat/Sidebar";
 import ChatMessages from "../components/AIChat/ChatMessages";
 import ChatInput from "../components/AIChat/ChatInput";
 import SettingsModal from "../components/AIChat/SettingsModal";
+import { TANYA_SAMPLE_RESPONSES } from "../../data/demoData";
+import { useAuth } from "../../context/authStore";
+import { useNavLayout } from "../../context/navStore";
+import { IconInfo } from "../../lib/icons";
 
-const SAMPLE_AI_RESPONSE = `Wudhu menggunakan air kopi adalah **tidak sah**.
-
-Menurut mazhab fikih yang umum dianut (seperti Mazhab Syafi'i), syarat air yang sah digunakan untuk bersuci (wudhu atau mandi wajib) adalah air yang mutlak, yaitu air suci dan menyucikan (*suci lagi mensucikan*).
-
-Kopi dikategorikan sebagai **air musta'mal** (air yang sudah tercampur dengan benda suci lain seperti biji kopi, sehingga mengalami perubahan warna, bau, atau rasa) atau disebut juga air muqoyyad (air terikat). Meskipun kopi itu halal dan suci untuk diminum, zat-zat pada kopi telah mengubah sifat air mutlak tersebut, sehingga kehilangan kemampuannya untuk mengangkat hadas dan najis.
-
-Agar wudhu sah, air yang digunakan haruslah air mutlak seperti air sumur, air hujan, air sungai, air mata air, atau air ledeng yang sifat aslinya (warna, rasa, dan bau) tetap terjaga dan tidak tercampur oleh bahan-bahan lain.`;
+function pickSampleResponse(questionText) {
+  const lower = questionText.toLowerCase();
+  if (lower.includes("nuzulul") || lower.includes("17")) {
+    return TANYA_SAMPLE_RESPONSES["q-nuzulul"];
+  }
+  if (lower.includes("buka") || lower.includes("doa")) {
+    return TANYA_SAMPLE_RESPONSES["q-doa-buka"];
+  }
+  if (lower.includes("lailatul") || lower.includes("malam terakhir")) {
+    return TANYA_SAMPLE_RESPONSES["q-lailatul"];
+  }
+  if (lower.includes("tadarus") || lower.includes("adab") || lower.includes("baca")) {
+    return TANYA_SAMPLE_RESPONSES["q-tadarus"];
+  }
+  return TANYA_SAMPLE_RESPONSES["q-air"];
+}
 
 export default function AIChat() {
   const navigate = useNavigate();
-
-  // Settings modal visibility state
+  const { currentUser } = useAuth();
+  const { isDesktopNavOpen, setDesktopNavOpen } = useNavLayout();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const replyTimerRef = useRef(null);
 
-  // Ensure dark class and theme storage are removed
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      document.documentElement.classList.remove("dark");
-      localStorage.removeItem("al-hikmah-theme");
-    }
-  }, []);
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 1024 : false
+  );
 
-  // Detect desktop breakpoint (>= 1024px)
-  const [isDesktop, setIsDesktop] = useState(() => {
-    if (typeof window !== "undefined") {
-      return window.innerWidth >= 1024;
-    }
-    return false;
-  });
-
-  // On desktop, chat history sidebar is docked open by default, can be toggled via hamburger
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
-    if (typeof window !== "undefined") {
-      return window.innerWidth >= 1024;
-    }
-    return false;
-  });
+  // Open Tanya history panel by default on desktop while collapsing main desktop sidebar
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 1024 : false
+  );
 
   const [input, setInput] = useState("");
-
   const [messages, setMessages] = useState([
     {
+      id: "init-user",
       role: "user",
-      content: "Apa hukumnya wudhu pakai air kopi",
+      content: "Syarat air untuk berwudhu dan dalilnya",
     },
     {
+      id: "init-assistant",
       role: "assistant",
-      content: SAMPLE_AI_RESPONSE,
+      sample: TANYA_SAMPLE_RESPONSES["q-air"],
     },
   ]);
 
-  // Handle responsive window resize
   useEffect(() => {
+    // Auto-collapse main desktop sidebar when entering Tanya so reading column stays roomy;
+    // user can reopen it anytime via the sidebar toggle in ChatHeader.
+    if (typeof window !== "undefined" && window.innerWidth >= 1024) {
+      setDesktopNavOpen(false);
+    }
     const handleResize = () => {
-      const desktop = window.innerWidth >= 1024;
-      setIsDesktop(desktop);
+      setIsDesktop(window.innerWidth >= 1024);
     };
-
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
+  }, [setDesktopNavOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (replyTimerRef.current) clearTimeout(replyTimerRef.current);
+    };
   }, []);
 
   const handleToggleSidebar = () => {
@@ -77,6 +86,8 @@ export default function AIChat() {
   };
 
   const handleNewChat = () => {
+    if (replyTimerRef.current) clearTimeout(replyTimerRef.current);
+    setIsTyping(false);
     setMessages([]);
     if (!isDesktop) {
       setIsSidebarOpen(false);
@@ -84,20 +95,31 @@ export default function AIChat() {
   };
 
   const handleHome = () => {
-    navigate("/");
+    setDesktopNavOpen(true);
+    if (currentUser?.role === "guru") navigate("/guru");
+    else if (currentUser?.role === "orang-tua") navigate("/orang-tua");
+    else navigate("/");
   };
 
-  const handleSelectChat = (questionText) => {
+  const handleSelectChat = (item) => {
+    if (replyTimerRef.current) clearTimeout(replyTimerRef.current);
+    setIsTyping(false);
+    const sample =
+      TANYA_SAMPLE_RESPONSES[item.id] || pickSampleResponse(item.text);
+
     setMessages([
       {
+        id: `u-${Date.now()}`,
         role: "user",
-        content: questionText,
+        content: item.text,
       },
       {
+        id: `a-${Date.now() + 1}`,
         role: "assistant",
-        content: SAMPLE_AI_RESPONSE,
+        sample,
       },
     ]);
+
     if (!isDesktop) {
       setIsSidebarOpen(false);
     }
@@ -110,53 +132,84 @@ export default function AIChat() {
     let displayContent = userText;
     if (attachments.length > 0) {
       const attachSummary = attachments.map((a) => a.name).join(", ");
-      displayContent = userText ? `${userText}\n\n[Lampiran: ${attachSummary}]` : `[Lampiran: ${attachSummary}]`;
+      displayContent = userText
+        ? `${userText}\n\n[Lampiran: ${attachSummary}]`
+        : `[Lampiran: ${attachSummary}]`;
     }
 
     setInput("");
-
     setMessages((prev) => [
       ...prev,
       {
+        id: `u-${Date.now()}`,
         role: "user",
         content: displayContent,
       },
-      {
-        role: "assistant",
-        content: SAMPLE_AI_RESPONSE,
-      },
     ]);
+
+    setIsTyping(true);
+    if (replyTimerRef.current) clearTimeout(replyTimerRef.current);
+
+    replyTimerRef.current = setTimeout(() => {
+      const sample = pickSampleResponse(userText || "air");
+      setIsTyping(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `a-${Date.now()}`,
+          role: "assistant",
+          sample,
+        },
+      ]);
+      replyTimerRef.current = null;
+    }, 750);
   };
 
   return (
     <div className="w-full h-screen flex bg-bg-base overflow-hidden">
-      {/* Settings Modal */}
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
       />
 
-      {/* Chat History Sidebar (Standalone in AIChat without DesktopSidebar) */}
+      {/* History Drawer / Collapsible Panel */}
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={handleCloseSidebar}
         onSelectChat={handleSelectChat}
         isDesktop={isDesktop}
+        hideFooterProfile={isDesktop && isDesktopNavOpen}
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
-      {/* Main Chat Interface */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden bg-bg-surface relative">
-        {/* Header */}
+      {/* Main Tanya Viewport */}
+      <main className="flex-1 min-w-0 flex flex-col h-full overflow-hidden bg-bg-base relative">
         <ChatHeader
           onToggleSidebar={handleToggleSidebar}
           onNewChat={handleNewChat}
           onHome={handleHome}
         />
 
-        {/* Centered Reading Column */}
-        <div className="flex-1 flex flex-col w-full max-w-3xl lg:max-w-4xl mx-auto overflow-hidden">
-          <ChatMessages messages={messages} />
+        <div className="w-full bg-accent-50 border-b border-accent-200 px-4 md:px-6 py-2.5 shrink-0">
+          <div className="max-w-[820px] mx-auto flex items-start sm:items-center gap-2 text-xs text-accent-800">
+            <IconInfo
+              className="text-base text-accent-600 shrink-0 mt-0.5 sm:mt-0"
+              aria-hidden="true"
+            />
+            <p className="leading-snug">
+              Jawaban di halaman <strong>Tanya</strong> dapat keliru. Untuk
+              persoalan hukum agama, tanyakan langsung kepada guru atau orang
+              tua.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex-1 flex flex-col w-full max-w-[820px] mx-auto overflow-hidden">
+          <ChatMessages
+            messages={messages}
+            isTyping={isTyping}
+            onQuickPrompt={(item) => handleSelectChat(item)}
+          />
 
           <ChatInput
             input={input}
