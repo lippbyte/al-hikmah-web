@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import AppLayout from "../components/AppLayout";
 import ProgressRing from "../components/ProgressRing";
 import BottomSheet from "../components/BottomSheet";
 import NotificationBell from "../components/NotificationBell";
+import PrayerScheduleCard from "../components/PrayerScheduleCard";
 import {
   ShaumForm,
   SholatWajibForm,
@@ -18,8 +19,11 @@ import { useAppData } from "../../context/appDataStore";
 import { useToast } from "../../context/toastStore";
 import {
   DEFAULT_PRAYER_SCHEDULE,
-  fetchPrayerSchedule,
+  fetchPrayerScheduleByCoords,
+  getLocalTimezoneLabel,
   getNextPrayerCountdown,
+  loadCachedGpsCoords,
+  requestBrowserGps,
 } from "../../services/prayerScheduleService";
 import { getSurahByNumber } from "../../services/quranService";
 import { listItem, tapScale } from "../../lib/motion";
@@ -36,7 +40,6 @@ import {
   IconCheckBold,
   IconCircle,
   IconMinus,
-  IconPrayerTime,
   IconChat,
   IconBookOpenText,
   IconQuestion,
@@ -49,19 +52,69 @@ export default function Home() {
   const { dailyLog, updateDailyLogSection } = useAppData();
   const { showToast } = useToast();
 
-  // Prayer Schedule + Live Countdown
+  // Prayer Schedule (GPS-based + Live Countdown)
   const [prayerState, setPrayerState] = useState({
     schedule: DEFAULT_PRAYER_SCHEDULE,
-    source: "Jadwal contoh · siap dihubungkan ke API",
-    city: "Kota Contoh (WIB)",
+    source: "Jadwal contoh · aktifkan izin lokasi GPS untuk akurasi setempat",
+    locationLabel: `Lokasi belum aktif (${getLocalTimezoneLabel()})`,
   });
+  const [locationStatus, setLocationStatus] = useState(() =>
+    loadCachedGpsCoords() ? "granted" : "prompt"
+  );
   const [now, setNow] = useState(() => new Date());
+
+  const handleRequestLocation = useCallback(
+    async (notifyUser = false) => {
+      setLocationStatus("requesting");
+      try {
+        const coords = await requestBrowserGps();
+        const data = await fetchPrayerScheduleByCoords(coords);
+        setPrayerState(data);
+        setLocationStatus("granted");
+        if (notifyUser) {
+          showToast("Jadwal sholat diperbarui sesuai lokasi GPS.");
+        }
+      } catch (err) {
+        const denied = err?.code === 1;
+        setLocationStatus(denied ? "denied" : "prompt");
+        if (notifyUser) {
+          showToast(
+            denied
+              ? "Izin lokasi ditolak. Aktifkan izin lokasi pada browser."
+              : "Gagal mengambil koordinat GPS. Coba lagi beberapa saat.",
+            "accent"
+          );
+        }
+      }
+    },
+    [showToast]
+  );
 
   useEffect(() => {
     let active = true;
-    fetchPrayerSchedule().then((data) => {
+    const cached = loadCachedGpsCoords();
+    fetchPrayerScheduleByCoords(cached).then((data) => {
       if (active) setPrayerState(data);
     });
+
+    // Trigger location permission / refresh GPS automatically on load
+    requestBrowserGps()
+      .then((coords) => fetchPrayerScheduleByCoords(coords))
+      .then((data) => {
+        if (active) {
+          setPrayerState(data);
+          setLocationStatus("granted");
+        }
+      })
+      .catch((err) => {
+        if (!active) return;
+        if (err?.code === 1) {
+          setLocationStatus("denied");
+        } else if (!cached) {
+          setLocationStatus("prompt");
+        }
+      });
+
     const interval = setInterval(() => setNow(new Date()), 30000);
     return () => {
       active = false;
@@ -443,59 +496,27 @@ export default function Home() {
                 })}
               </div>
             </section>
+
+            {/* Mobile Jadwal Sholat (GPS) */}
+            <div className="lg:hidden">
+              <PrayerScheduleCard
+                prayerState={prayerState}
+                countdown={countdown}
+                locationStatus={locationStatus}
+                onRequestLocation={() => handleRequestLocation(true)}
+              />
+            </div>
           </div>
 
           {/* Desktop Companion Column */}
           <aside className="hidden lg:flex lg:col-span-5 xl:col-span-4 flex-col gap-5">
-            {/* Widget 1: Jadwal Sholat API-ready + Countdown */}
-            <div className="bg-bg-surface border border-border rounded-[1.5rem] p-5 shadow-[var(--shadow-card)] flex flex-col gap-3.5">
-              <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-border-subtle">
-                <div className="flex items-center gap-2">
-                  <IconPrayerTime
-                    className="text-primary-600 text-xl shrink-0"
-                    aria-hidden="true"
-                  />
-                  <h3 className="font-display text-base font-bold text-text-main">
-                    Jadwal Sholat
-                  </h3>
-                </div>
-                <span className="text-[11px] text-text-muted font-medium">
-                  {prayerState.city}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                {prayerState.schedule.map((p) => {
-                  const isNext = p.id === countdown.nextId;
-                  return (
-                    <div
-                      key={p.id}
-                      className={`p-2.5 rounded-2xl border text-center transition-colors ${
-                        isNext
-                          ? "bg-primary-50 border-primary-200 text-primary-700"
-                          : "bg-bg-base border-border-subtle text-text-main"
-                      }`}
-                    >
-                      <div className="text-[11px] text-text-muted font-medium">
-                        {p.name}
-                      </div>
-                      <div className="text-sm font-bold mt-0.5">{p.time}</div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Countdown caption */}
-              <div className="flex items-center justify-between gap-2 pt-1 text-xs">
-                <span className="inline-flex items-center gap-1.5 font-semibold text-primary-700">
-                  <IconClock className="text-sm shrink-0" aria-hidden="true" />
-                  <span>{countdown.text}</span>
-                </span>
-              </div>
-              <p className="text-[11px] text-text-muted -mt-2">
-                {prayerState.source}
-              </p>
-            </div>
+            {/* Widget 1: Jadwal Sholat (GPS + Countdown) */}
+            <PrayerScheduleCard
+              prayerState={prayerState}
+              countdown={countdown}
+              locationStatus={locationStatus}
+              onRequestLocation={() => handleRequestLocation(true)}
+            />
 
             {/* Widget 2: Pintasan Tanya */}
             <div className="bg-bg-surface border border-border rounded-[1.5rem] p-5 shadow-[var(--shadow-card)] flex flex-col gap-3.5">

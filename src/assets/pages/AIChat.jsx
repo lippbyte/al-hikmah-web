@@ -7,7 +7,6 @@ import ChatInput from "../components/AIChat/ChatInput";
 import SettingsModal from "../components/AIChat/SettingsModal";
 import { TANYA_SAMPLE_RESPONSES } from "../../data/demoData";
 import { useAuth } from "../../context/authStore";
-import { useNavLayout } from "../../context/navStore";
 import { IconInfo } from "../../lib/icons";
 
 function pickSampleResponse(questionText) {
@@ -21,7 +20,11 @@ function pickSampleResponse(questionText) {
   if (lower.includes("lailatul") || lower.includes("malam terakhir")) {
     return TANYA_SAMPLE_RESPONSES["q-lailatul"];
   }
-  if (lower.includes("tadarus") || lower.includes("adab") || lower.includes("baca")) {
+  if (
+    lower.includes("tadarus") ||
+    lower.includes("adab") ||
+    lower.includes("baca")
+  ) {
     return TANYA_SAMPLE_RESPONSES["q-tadarus"];
   }
   return TANYA_SAMPLE_RESPONSES["q-air"];
@@ -30,7 +33,6 @@ function pickSampleResponse(questionText) {
 export default function AIChat() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const { isDesktopNavOpen, setDesktopNavOpen } = useNavLayout();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const replyTimerRef = useRef(null);
@@ -39,37 +41,21 @@ export default function AIChat() {
     typeof window !== "undefined" ? window.innerWidth >= 1024 : false
   );
 
-  // Open Tanya history panel by default on desktop while collapsing main desktop sidebar
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() =>
-    typeof window !== "undefined" ? window.innerWidth >= 1024 : false
-  );
+  // Riwayat percakapan selalu tertutup saat halaman Tanya dibuka (web maupun mobile);
+  // sidebar navigasi utama tetap terbuka di desktop.
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState([
-    {
-      id: "init-user",
-      role: "user",
-      content: "Syarat air untuk berwudhu dan dalilnya",
-    },
-    {
-      id: "init-assistant",
-      role: "assistant",
-      sample: TANYA_SAMPLE_RESPONSES["q-air"],
-    },
-  ]);
+  // Mulai langsung dengan percakapan baru (New Conversation)
+  const [messages, setMessages] = useState([]);
 
   useEffect(() => {
-    // Auto-collapse main desktop sidebar when entering Tanya so reading column stays roomy;
-    // user can reopen it anytime via the sidebar toggle in ChatHeader.
-    if (typeof window !== "undefined" && window.innerWidth >= 1024) {
-      setDesktopNavOpen(false);
-    }
     const handleResize = () => {
       setIsDesktop(window.innerWidth >= 1024);
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [setDesktopNavOpen]);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -95,7 +81,6 @@ export default function AIChat() {
   };
 
   const handleHome = () => {
-    setDesktopNavOpen(true);
     if (currentUser?.role === "guru") navigate("/guru");
     else if (currentUser?.role === "orang-tua") navigate("/orang-tua");
     else navigate("/");
@@ -172,13 +157,13 @@ export default function AIChat() {
         onClose={() => setIsSettingsOpen(false)}
       />
 
-      {/* History Drawer / Collapsible Panel */}
+      {/* Panel / Drawer Riwayat Tanya (tertutup secara default, buka-tutup via header) */}
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={handleCloseSidebar}
         onSelectChat={handleSelectChat}
         isDesktop={isDesktop}
-        hideFooterProfile={isDesktop && isDesktopNavOpen}
+        hideFooterProfile={isDesktop}
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
@@ -211,11 +196,7 @@ export default function AIChat() {
             onQuickPrompt={(item) => handleSelectChat(item)}
           />
 
-          <ChatInput
-            input={input}
-            setInput={setInput}
-            onSend={handleSend}
-          />
+          <ChatInput input={input} setInput={setInput} onSend={handleSend} />
         </div>
       </main>
     </div>

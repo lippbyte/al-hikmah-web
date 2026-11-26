@@ -6,6 +6,8 @@ import { TANYA_HISTORY } from "../../../data/demoData";
 import { ease, sheetBackdrop, tapScale } from "../../../lib/motion";
 import { IconClose } from "../../../lib/icons";
 
+const PANEL_TRANSITION = { duration: 0.28, ease };
+
 export default function Sidebar({
   isOpen,
   onClose,
@@ -27,14 +29,14 @@ export default function Sidebar({
     <div className="flex flex-col justify-between h-full w-full gap-3">
       <div className="flex flex-col gap-3 flex-1 overflow-hidden">
         <div className="flex items-center justify-between">
-          <span className="font-display text-base font-bold text-text-main">
+          <span className="font-display text-base font-bold text-text-main whitespace-nowrap">
             Riwayat Contoh
           </span>
           <motion.button
             whileTap={tapScale}
             type="button"
             onClick={onClose}
-            className="w-11 h-11 -mr-1.5 rounded-2xl flex items-center justify-center text-text-muted hover:text-text-main hover:bg-bg-elevated transition-colors cursor-pointer"
+            className="w-11 h-11 -mr-1.5 rounded-2xl flex items-center justify-center text-text-muted hover:text-text-main hover:bg-bg-elevated transition-colors cursor-pointer shrink-0"
             aria-label="Tutup riwayat Tanya"
           >
             <IconClose className="text-xl" aria-hidden="true" />
@@ -87,20 +89,23 @@ export default function Sidebar({
 
   if (isDesktop) {
     return (
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.aside
-            initial={{ opacity: 0, x: -16 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -16 }}
-            transition={{ duration: 0.22, ease }}
-            aria-label="Panel riwayat Tanya"
-            className="w-[268px] h-full bg-bg-surface border-r border-border flex flex-col justify-between p-4 shrink-0 z-20"
-          >
-            {sidebarContent}
-          </motion.aside>
-        )}
-      </AnimatePresence>
+      <motion.aside
+        initial={false}
+        animate={{
+          width: isOpen ? 268 : 0,
+          opacity: isOpen ? 1 : 0,
+        }}
+        transition={PANEL_TRANSITION}
+        aria-label="Panel riwayat Tanya"
+        aria-hidden={!isOpen || undefined}
+        className={`h-full bg-bg-surface flex flex-col justify-between overflow-hidden shrink-0 z-20 ${
+          isOpen ? "border-r border-border" : "border-r-0 pointer-events-none"
+        }`}
+      >
+        <div className="w-[268px] h-full p-4 flex flex-col justify-between">
+          {sidebarContent}
+        </div>
+      </motion.aside>
     );
   }
 
@@ -119,7 +124,7 @@ export default function Sidebar({
             initial={{ x: "-100%" }}
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
-            transition={{ duration: 0.25, ease }}
+            transition={{ duration: 0.26, ease }}
             aria-label="Drawer riwayat Tanya"
             className="fixed inset-y-0 left-0 w-[84%] max-w-[320px] bg-bg-surface z-50 shadow-[var(--shadow-elevated)] flex flex-col justify-between p-4 border-r border-border h-full"
           >

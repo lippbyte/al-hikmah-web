@@ -42,7 +42,7 @@ Seluruh komponen wajib menggunakan token `@theme` Tailwind v4 dari `src/index.cs
 
 ## 3. Tata Letak, Navigasi & Bento Grid
 
-- **Desktop**: sidebar kiri **dapat dibuka-tutup** (`DesktopSidebar`), begitu pula panel riwayat di halaman **Tanya** (`AIChat`). Konten dibatasi `max-w-[1100px]`.
+- **Desktop**: sidebar kiri **dapat dibuka-tutup** (`DesktopSidebar`), tetap terbuka saat membuka halaman **Tanya** (`AIChat`), sementara panel riwayat percakapan di **Tanya** tertutup secara default (halaman dimulai sebagai percakapan baru) dan dapat dibuka via header. Konten dibatasi `max-w-[1100px]`.
 - **Mobile**: bottom tab bar dengan gestur **drag-hover** (`DraggableBottomNav`) sehingga pengguna dapat menggeser jari antar tab secara mulus, target sentuh ≥ 48 px.
   - Siswa: `Hari Ini`, `Ramadan`, `Tanya`, `Profil`.
   - Guru: `Kelas`, `Perlu Disapa`, `Rekap` (fitur `Atur Kegiatan` dihapus; pemilih kelas memakai dropdown).
@@ -54,7 +54,7 @@ Seluruh komponen wajib menggunakan token `@theme` Tailwind v4 dari `src/index.cs
   5. **Infaq**: input teks keterangan bebas tanpa nominal dan tanpa status sudah/belum.
   6. **Ceramah / Kultum**: judul, penceramah, media (*Langsung di Masjid*, *Di Rumah*, *Lewat Internet*), ringkasan jujur, dan keterangan.
 - **Kegiatan Khusus**: skema elemen dinamis yang dapat ditambah/dihapus oleh Admin Sekolah (kehadiran, ringkasan ceramah, keterangan, penanda malam).
-- **Jadwal Sholat**: adapter siap API (`src/services/prayerScheduleService.js`) lengkap dengan hitung mundur langsung *"... jam ... menit lagi menuju ..."*.
+- **Jadwal Sholat**: berbasis izin lokasi **GPS perangkat** (perhitungan standar Kemenag RI & adapter siap-API di `src/services/prayerScheduleService.js`) lengkap dengan hitung mundur langsung *"... jam ... menit lagi menuju ..."*.
 - **Notifikasi & Orang Tua**: sapaan guru mengirim notifikasi ke siswa terpilih; pengisian siswa mengirim notifikasi ke orang tua; orang tua dapat mengklik ringkasan per tanggal untuk melihat keterangan dan mengonfirmasi, serta melihat jadwal Kegiatan Khusus sekolah.
 
 ## 4. Ikon & Animasi
